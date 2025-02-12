@@ -1,0 +1,202 @@
+{% extends "layouts/authBase.html" %} {% block title %} {% if title %} {{ title
+}} {% else %} SACOETEC Property || Easiest way to find your dream home {% endif
+%} {%endblock %} {% block content %} {% if viewType == "Students Login" %}
+<div class="auth-form-light text-left py-5 px-4 px-sm-5">
+  <div class="brand-logo text-center">
+    <img
+      src="{{ url_for('views.static', filename='images/favicon.png') }}"
+      width="50"
+      alt="logo"
+    />
+  </div>
+  <h4>Hello! let's get started</h4>
+  <h6 class="font-weight-light">Sign in to continue.</h6>
+  <form class="pt-3" method="post">
+    <div class="form-group">
+      {{ form.email() }}
+    </div>
+    <div class="form-group">
+      {{ form.password() }}
+    </div>
+    <div class="my-2 d-flex justify-content-between align-items-center">
+      <div class="form-check">
+        <label class="form-check-label text-muted">
+          <input type="checkbox" class="form-check-input" />
+          Keep me signed in
+        </label>
+      </div>
+      <a
+        href="{{ url_for('auth.clientForgotPassword', userRole=userRole) }}"
+        class="auth-link text-black"
+        >Forgot password?</a
+      >
+    </div>
+    <div class="mt-3">
+      {{ form.submit() }}
+    </div>
+
+    <!--<div class="mb-2">
+                  <button type="button" class="btn btn-block btn-facebook auth-form-btn">
+                    <i class="ti-facebook mr-2"></i>Connect using facebook
+                  </button>
+                </div>-->
+    <div class="text-center mt-4 font-weight-light">
+      Don't have an account?
+      <a
+        href="{{ url_for('auth.clientRegister', userRole=userRole) }}"
+        class="text-primary"
+        >Create</a
+      >
+    </div>
+  </form>
+</div>
+{% elif viewType == "Students Register" %}
+<div class="auth-form-light text-left py-5 px-4 px-sm-5">
+  <div class="brand-logo text-center">
+    <img src="{{ url_for('views.static', filename='images/favicon.png') }}" alt="logo" />
+  </div>
+  <h4>New here?</h4>
+  <h6 class="font-weight-light">
+    Signing up is easy. It only takes a few steps
+  </h6>
+  <form class="pt-3" method="post">
+    <div class="form-group">
+      {{ form.username() }}
+      <!--<input
+        type="text"
+        class="form-control form-control-lg"
+        id="exampleInputUsername1"
+        placeholder="Username"
+      />-->
+    </div>
+    <div class="form-group">
+      {{ form.email() }}
+      <!--<input
+        type="email"
+        class="form-control form-control-lg"
+        id="exampleInputEmail1"
+        placeholder="Email"
+      />-->
+    </div>
+    <!--<div class="form-group">
+      <select
+        class="form-control form-control-lg"
+        id="exampleFormControlSelect2"
+      >
+        <option>Country</option>
+        <option>United States of America</option>
+        <option>United Kingdom</option>
+        <option>India</option>
+        <option>Germany</option>
+        <option>Argentina</option>
+      </select>
+    </div>-->
+    <div class="form-group">
+      {{ form.password() }}
+      <!--<input
+        type="password"
+        class="form-control form-control-lg"
+        id="exampleInputPassword1"
+        placeholder="Password"
+      />-->
+    </div>
+    <div class="mb-4">
+      <div class="form-check">
+        <label class="form-check-label text-muted">
+          <input type="checkbox" class="form-check-input" />
+          I agree to all Terms & Conditions
+        </label>
+      </div>
+    </div>
+    <div class="mt-3">
+      {{ form.submit() }}
+      <!--<a
+        class="btn btn-block btn-primary btn-lg font-weight-medium auth-form-btn"
+        href="../../index.html"
+        >SIGN UP</a
+      >-->
+    </div>
+    <div class="text-center mt-4 font-weight-light">
+      Already have an account?
+      <a href="{{ url_for('auth.clientLogin', userRole=userRole) }}" class="text-primary">Login</a>
+    </div>
+  </form>
+</div>
+{% elif viewType == "ForgotPassword" %}
+<div class="auth-form-light text-left py-5 px-4 px-sm-5">
+  <div class="brand-logo text-center">
+    <img
+      src="{{ url_for('views.static', filename='images/favicon.png') }}"
+      width="50"
+      alt="logo"
+    />
+  </div>
+  <h4>Hello! let's get started</h4>
+  <h6 class="font-weight-light">Sign in to continue.</h6>
+  <form class="pt-3" method="post">
+    <div class="form-group">
+      {{ form.email() }}
+      <!---<input type="email" class="form-control form-control-lg" id="exampleInputEmail1" placeholder="Username">-->
+    </div>
+   
+    <div class="mt-3">
+      {{ form.submit() }}
+    </div>
+  </form>
+</div>
+{% elif viewType == "EmailVerification"%}
+<div class="auth-form-light text-left py-5 px-4 px-sm-5">
+  <div class="brand-logo text-center">
+    <img
+      src="{{ url_for('views.static', filename='images/favicon.png') }}"
+      width="50"
+      alt="logo"
+    />
+  </div>
+  <h4>Hello! let's get started</h4>
+  <h6 class="font-weight-light">Sign in to continue.</h6>
+  <form class="pt-3" method="post">
+    <div class="form-group">
+      {{ form.gender() }}
+    </div>
+
+    <div class="form-group">
+      {{ form.program() }}
+    </div>
+
+    <div class="form-group">
+      {{ form.matric_no() }}
+    </div>
+
+    <div class="form-group">
+      {{ form.department() }}
+    </div>
+
+    <div class="form-group">
+      {{ form.level() }}
+    </div>
+
+    <div class="form-group">
+      {{ form.phone_number() }}
+    </div>
+
+    <div class="form-group">
+      {{ form.dob() }}
+    </div>
+
+
+    <div class="form-group">
+      {{ form.state() }}
+    </div>
+
+    <div class="form-group">
+      {{ form.address() }}
+    </div>
+
+
+    <div class="mt-3">
+      {{ form.submit() }}
+    </div>
+  </form>
+</div>
+{% endif %} {%endblock %}
