@@ -625,6 +625,23 @@ def get_user_data(user_uid, userRole):
         return None
 
 
+def get_location_from_ip(ip_address, token):
+    """ Get the user's location uses the ip address """
+
+    try:
+        response = requests.get(f"https://ipinfo.io/{ip_address}/json?token={token}")
+        if response.status_code == 200:
+            data = response.json()
+            location = data.get("loc").split(",") if "loc" in data else None
+            timezone = data.get("timezone")
+            country = data.get("country")
+            if location:
+                return {"latitude": float(location[0]), "longitude": float(location[1]), "timezone": timezone, "country": country}
+    except Exception as e:
+        current_app.logger.error("Error retrieving location:", e)
+    return None
+
+
 #def get_user_info_data(bind_id, userRole):
 #    """ This function fetches user details based on role """
 #

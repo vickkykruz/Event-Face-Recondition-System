@@ -10,7 +10,13 @@ from website.clients.models.users import (
 )
 from website.clients.models.forms import LoginForm, RegisterForm, EmailVerificationForm, ForgottenPasswordForm, ResetPasswordForm, ResendEmailVerificationForm
 from website.clients.models.models import Students, EmailVerification, ResetVerification
-from website.clients.models.utils import handle_error_msg, update_firebase_name_profile, send_alert_email, get_user_data, get_user_uid_from_token
+from website.clients.models.utils import (
+        handle_error_msg,
+        update_firebase_name_profile,
+        send_alert_email,
+        get_user_data,
+        get_user_uid_from_token,
+        get_location_from_ip)
 import json
 import secrets
 from firebase_admin import auth as firebase_auth, firestore
@@ -18,6 +24,8 @@ from firebase_admin.exceptions import FirebaseError
 from os import path, environ, getenv
 from datetime import datetime, timedelta, timezone, time
 
+
+IPINFO_API_TOKEN = environ.get('IPINFO_API_TOKEN')
 
 # Define the BluePrint
 auth = Blueprint(
@@ -83,6 +91,25 @@ def clientLogin(userRole):
             if user_data.email_verify == "Not Verified":
                 flash("Your email is not verified. Please verify your email.", "danger")
                 return redirect(url_for('auth.resend_verification', userRole=userRole))
+
+            # Get location from IP
+            user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+
+            if user_ip and ',' in user_ip:
+                user_ip = user_ip.split(',')[0].strip()
+
+            match = re.search(r'::ffff:(\d+\.\d+\.\d+\.\d+)', user_ip)
+            if match:
+                user_ip = match.group(1)
+
+            print('UserIP Address: ', user_ip)
+
+            user_location = get_location_from_ip(user_ip, IPINFO_API_TOKEN)
+
+            if not user_location:
+                flash("An error occured. Please try again later.", "danger")
+                print('An error occureds. Please try again later.')
+                return redirect(url_for('auth.clientLogin', userRole=userRole))
 
             # Store session token in cookies
             if userRole == "tenants":
@@ -230,9 +257,21 @@ def verify_email(userRole, user_uid, token):
     viewType = "EmailVerification"
     form = EmailVerificationForm()
 
-    if request.method == 'POST' and form.validate_on_submit():
+    if request.method == 'POST':
+        gender = request.form.get("gender")
+        program = request.form.get("program")
+        matric_no = request.form.get("matric_no")
+        department = request.form.get("department")
+        level = request.form.get("level")
+        phone_number = request.form.get("phone_number")
+        dob = request.form.get("dob")
+        state = request.form.get("state")
+        address = request.form.get("address")
 
         try:
+            if not gender or not program or not matric_no or not department or not level or not phone_number or not dob or not state or not address:
+                raise ValueError("Error: Missing Information. Ensure you fill all the field")
+
             if not user_uid:
                 raise ValueError("Unable to fetch user id")
 
@@ -251,14 +290,31 @@ def verify_email(userRole, user_uid, token):
                 raise FirebaseError("auth/invalid-token", "Invalid verification token. Please login.")
 
             # Convert the 'expiresAt' string to a datetime object
-            #expires_at = datetime.fromisoformat(email_verify_record['expiresAt'])
-            #expires_at = datetime.fromisoformat(email_verify_record.expiresAt)
             expires_at = email_verify_record.expiresAt
 
             # Check if the token has expired
             if expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
                 flash("Verification token has expired. Please login again.", "danger")
                 return redirect(url_for("auth.resend_verification", userRole=userRole))
+
+            # Get location from IP
+            user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+
+            if user_ip and ',' in user_ip:
+                user_ip = user_ip.split(',')[0].strip()
+
+            match = re.search(r'::ffff:(\d+\.\d+\.\d+\.\d+)', user_ip)
+            if match:
+                user_ip = match.group(1)
+
+            print('UserIP Address: ', user_ip)
+
+            user_location = get_location_from_ip(user_ip, IPINFO_API_TOKEN)
+
+            if not user_location:
+                flash("An error occured. Please try again later.", "danger")
+                print('An error occureds. Please try again later.')
+                return redirect(url_for('auth.clientLogin', userRole=userRole))
 
             # Update the email_verify status to verify
             user_data.email_verify = "Verfied"
@@ -272,7 +328,7 @@ def verify_email(userRole, user_uid, token):
             # Inform the user that the verification was successful
             flash("Your email address has been successfully verified!", "success")
 
-            if userRole == "tenants" and property_id:
+            if userRole == "tenants":
                 return redirect(url_for("views.displayLandlord", userRole=userRole, property_id=property_id))
             elif userRole == "landlords":
                 return redirect(url_for("views.clientDashboard", userRole=userRole))
