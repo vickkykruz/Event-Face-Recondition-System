@@ -72,7 +72,7 @@ def create_app():
     if not firebase_admin._apps:
         cred = credentials.Certificate(FIREBASE_CREDENTIALS)
         firebase_admin.initialize_app(cred, {
-            'storageBucket': 'sacoetec-hostel-properties.firebasestorage.app'
+            'storageBucket': 'telemedical-710dc.appspot.com'
         })
 
     # Firebase Frontend intilization (Initialize Firebase Pyrebase)
@@ -116,9 +116,9 @@ def create_app():
         return render_template("error_pages/405.html", title=title)
 
     # Define the route for serving uploaded files
-    @app.route("/<filename>")
-    def uploaded_file(filename):
-        return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+    #@app.route("/<filename>")
+    #def uploaded_file(filename):
+    #    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
     # Import the schemer of our database
     # from website.clients.models.models import User  # noqa: F841

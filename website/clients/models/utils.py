@@ -609,10 +609,8 @@ def get_user_data(user_uid, userRole):
         user_data = None  # Initialize variable to avoid undefined reference
 
         # Fetch data based on user role
-        if userRole == "landlords":
-            user_data = Landlord.query.filter_by(uid=user_uid).first()
-        elif userRole == "tenants":
-            user_data = Tenant.query.filter_by(uid=user_uid).first()
+        if userRole == "students":
+            user_data = Students.query.filter_by(uid=user_uid).first()
 
         if user_data:
             return user_data
@@ -642,30 +640,27 @@ def get_location_from_ip(ip_address, token):
     return None
 
 
-#def get_user_info_data(bind_id, userRole):
-#    """ This function fetches user details based on role """
-#
-#    if not bind_id or not userRole:
-#        return None  # Return None if either user_uid or userRole is missing
-#
-#    try:
-#
-#        # Fetch data based on user role
-#        if userRole == "landlords":
-#            user_info = LandlordInfo.query.filter_by(landlord_id=bind_id).first()
-#        elif userRole == "tenants":
-#            user_info = TenantInfo.query.filter_by(tenant_id=bind_id).first()
-#        elif userRole == "properties":
-#            user_info = Properties.query.filter_by(secondary_key=bind_id).first()
-#
-#        if user_info:
-#            return user_info
-#        else:
-#            return None
-#
-#    except Exception as e:
-#        print(f"Error fetching user data: {e}")
-#        return None
+def get_user_info_data(bind_id, userRole):
+    """ This function fetches user details based on role """
+
+    if not bind_id or not userRole:
+        return None  # Return None if either user_uid or userRole is missing
+
+    try:
+
+        # Fetch data based on user role
+        if userRole == "student_info":
+            user_info = StudentInfo.query.filter_by(student_id=bind_id).first()
+
+        if user_info:
+            return user_info
+        else:
+            return None
+
+    except Exception as e:
+        print(f"Error fetching user data: {e}")
+        return None
+
 
 def get_property_based_on_landlord(landlord_id):
     """ This is a function that list out all the properties the landlords has uploaded """

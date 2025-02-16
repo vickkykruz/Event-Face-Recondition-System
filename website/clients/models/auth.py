@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, flash, request, redirect, url_for, make_response, current_app, session
+from flask import Blueprint, render_template, flash, request, redirect, url_for, make_response, current_app, session, jsonify
 # from website.admin.models.admins import get_admin_by_email
 #from website.clients.models.password_utils import set_password, check_password
 from website import db
@@ -9,7 +9,7 @@ from website.clients.models.users import (
     get_user_by_phone_number,
 )
 from website.clients.models.forms import LoginForm, RegisterForm, EmailVerificationForm, ForgottenPasswordForm, ResetPasswordForm, ResendEmailVerificationForm
-from website.clients.models.models import Students, EmailVerification, ResetVerification
+from website.clients.models.models import Students, EmailVerification, ResetVerification, StudentInfo
 from website.clients.models.utils import (
         handle_error_msg,
         update_firebase_name_profile,
@@ -18,11 +18,18 @@ from website.clients.models.utils import (
         get_user_uid_from_token,
         get_location_from_ip)
 import json
+import re
 import secrets
+import base64
+import face_recognition
+import numpy as np
+import cv2
 from firebase_admin import auth as firebase_auth, firestore
 from firebase_admin.exceptions import FirebaseError
 from os import path, environ, getenv
 from datetime import datetime, timedelta, timezone, time
+import os
+from werkzeug.utils import secure_filename
 
 
 IPINFO_API_TOKEN = environ.get('IPINFO_API_TOKEN')
@@ -325,14 +332,15 @@ def verify_email(userRole, user_uid, token):
             current_time = datetime.utcnow()  # Current time in UTC
             previous_last_logged_in = getattr(user_data, "last_logged_in", None) or "None"
             student_bind_id = getattr(user_data, "student_bind_id", None) or "None"
+            dob_date = datetime.strptime(dob, "%Y-%m-%d").date()
 
-            if student_bind_id is None or student_bind_id is "None":
+            if student_bind_id is None or student_bind_id == "None":
                 flash("An Error Occurred Please login again.", "danger")
                 return redirect(url_for("auth.clientLogin", userRole=userRole))
 
             student_info = StudentInfo(
                     student_id=student_bind_id,
-                    dob=dob,
+                    dob=dob_date,
                     gender=gender,
                     phone_number=phone_number,
                     marticno=matric_no,
@@ -378,8 +386,9 @@ def verify_email(userRole, user_uid, token):
 
 
 @auth.route("/<userRole>/face-scan/<user_uid>", methods=["GET", "POST"])
-def clientFaceScan(userRole, user_id):
+def clientFaceScan(userRole, user_uid):
     """ This is a function that handle the face scan of the user """
+    from website.celery.tasks import upload_file_to_firebase_task
 
     # Define the valid user roles
     valid_roles = ['students']
@@ -390,14 +399,81 @@ def clientFaceScan(userRole, user_id):
         return render_template("404.html"), 404
 
     title = f"SACOETEC PROPERTY | {userRole.upper()} | Face Scan"
-    viewType = "ForgotPassword"
+    viewType = "FaceScan"
     form = ForgottenPasswordForm()
 
     if request.method == "POST":
         # Handle the POST request
-        pass
+        try:
+            data = request.json
+            image_data = data.get("image")
+            if not image_data:
+                return jsonify({"error": "No image received"}), 400
 
-    return render_template("auth.html", title=title, form=form, viewType=viewType, userRole=userRole)
+            #face_image_filename = secure_filename(image_data.filename)
+            face_image_filename = secure_filename(f"{user_uid}.png")
+            #face_image_data = base64.b64encode(image_data.read()).decode('utf-8')
+            #face_image_content_type = image_data.content_type
+            face_image_dir = "Event_Face_Recongition/faces/"
+            face_image_path = os.path.join(face_image_dir, face_image_filename)
+
+            if not os.path.exists(face_image_dir):
+                os.makedirs(face_image_dir)
+
+            image_data = image_data.split(",")[1]
+
+            # Decode base64 image and save it locally
+            image_bytes = base64.b64decode(image_data)
+            with open(face_image_path, "wb") as img_file:
+                img_file.write(image_bytes)
+
+
+            # Process image with face_recognition
+            image = face_recognition.load_image_file(face_image_path)
+            face_encodings = face_recognition.face_encodings(image)
+
+            if len(face_encodings) > 0:
+                # Save face encoding to the database
+                student_data = get_user_data(user_uid, userRole)
+                student_bind_id = student_data.student_bind_id
+                student_data.face_encoding = json.dumps(face_encodings[0].tolist())  # Convert to list
+                db.session.commit()
+
+                # Call Celery task to upload profile picture
+                upload_file_to_firebase_task.delay(
+                        file_data=base64.b64encode(image_bytes).decode('utf-8'),
+                        file_key="photo_url",  # Column in the model where the URL will be stored
+                        content_type="image/png",
+                        file_path=face_image_path,
+                        task_role="student_info",  # Role of the task (e.g., landlords, tenants)
+                        task_key=student_bind_id  # Key to identify the row in the model (e.g., email or user ID)
+                )
+
+                # 🗑️ Delete the local file after processing
+                if os.path.exists(face_image_path):
+                    os.remove(face_image_path)
+
+                return jsonify({"success": True, "message": "Face registered successfully!"})
+            else:
+
+                # 🗑️ Delete the local file after processing
+                if os.path.exists(face_image_path):
+                    os.remove(face_image_path)
+
+                return jsonify({"error": "No face detected. Try again."}), 400
+
+
+        except Exception as e:
+            print("Error processing image:", e)
+
+            # 🗑️ Delete the local file after processing
+            if os.path.exists(face_image_path):
+                os.remove(face_image_path)
+
+            return jsonify({"error": "Error processing image"}), 500
+
+
+    return render_template("auth.html", title=title, form=form, user_uid=user_uid, viewType=viewType, userRole=userRole)
 
 
 @auth.route("/<userRole>/forgot-password", methods=['GET', 'POST'])
@@ -581,7 +657,9 @@ def resend_verification(userRole):
     viewType = "resend-verification"
     form = ResendEmailVerificationForm()
 
-    if request.method == 'POST' and form.validate_on_submit():
+    # and form.validate_on_submit()
+
+    if request.method == 'POST':
 
         try:
             # Get the email from the form
@@ -647,10 +725,10 @@ def resend_verification(userRole):
             response = make_response(redirect(url_for('auth.resend_verification', userRole=userRole)))
             response.set_cookie('auth_token', auth_token, httponly=True, secure=False, max_age=3600)
 
-            flash("Verification email resent. Please check your inbox.", "info")
+            flash("Verification email resent. Please check your inbox.", "success")
             return response
         except Exception as e:
-            current_app.logger.error(f'Error: {e}')
+            print("Error: ", e)
             # Handle general exceptions with a different messageresend_verification
             error_message = handle_error_msg(e)
             flash(error_message, "danger")

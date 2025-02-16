@@ -7,6 +7,7 @@ from time import sleep
 import logging
 import base64
 from firebase_admin import storage
+from website.clients.models.utils import get_user_info_data
 
 
 celery = get_celery()
@@ -51,7 +52,7 @@ def upload_file_to_firebase_task(self, file_data, file_key, content_type, file_p
     """Uploads a file to Firebase Storage asynchronously."""
 
     from website import db
-    from website.clients.models.models import LandlordInfo, TenantInfo, Properties, PropertiesImages
+    #from website.clients.models.models import LandlordInfo, TenantInfo, Properties, PropertiesImages
 
     #print(f"Task Started: file_data={file_data}, file_name={file_name}, content_type={content_type}, path={path}, {task_role}, {task_key}")
 
@@ -69,41 +70,13 @@ def upload_file_to_firebase_task(self, file_data, file_key, content_type, file_p
         file_url = blob.public_url
         user_data = None
 
-        user_data = get_user_info(task_key, task_role)
+        user_data = get_user_info_data(task_key, task_role)
 
 
-        if task_role == "landlords":
-            if not user_data:
-                # Create a new LandlordInfo record if it doesn't exist
-                user_data = LandlordInfo(landlord_id=task_key)
-                db.session.add(user_data)
-            # Update the file_key with the file URL
-            setattr(user_data, file_key, file_url)
-
-        elif task_role == "tenants":
-            if not user_data:
-                # Create a new TenantInfo record if it doesn't exist
-                user_data = TenantInfo(tenant_id=task_key)
-                db.session.add(user_data)
-            # Update the file_key with the file URL
-            setattr(user_data, file_key, file_url)
-
-        elif task_role == "properties":
-            if not user_data:
-                # Create a new TenantInfo record if it doesn't exist
-                user_data = Properties(secondary_key=task_key)
-                db.session.add(user_data)
-            # Update the file_key with the file URL
-            setattr(user_data, file_key, file_url)
-
-        elif task_role == "properties_images":
-            if not user_data:
-                # Create a new TenantInfo record if it doesn't exist
-                user_data = PropertiesImages(property_id=task_key)
-                db.session.add(user_data)
-            # Update the file_key with the file URL
-            setattr(user_data, file_key, file_url)
-
+        if task_role == "student_info":
+            if user_data: 
+                # Update the file_key with the file URL
+                setattr(user_data, file_key, file_url)
         else:
             raise ValueError(f"Invalid task role: {task_role}")
 
