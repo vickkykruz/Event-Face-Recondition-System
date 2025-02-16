@@ -316,8 +316,43 @@ def verify_email(userRole, user_uid, token):
                 print('An error occureds. Please try again later.')
                 return redirect(url_for('auth.clientLogin', userRole=userRole))
 
+            current_latitude = user_location['latitude']
+            current_longitude = user_location['longitude']
+            previous_latitude = previous_latitude = getattr(user_data, "previous_latitude", None) or "None"
+            previous_longitude = getattr(user_data, "previous_longitude", None) or "None"
+
+            # Get the current time and the previous 'last_logged_in' and user,s location
+            current_time = datetime.utcnow()  # Current time in UTC
+            previous_last_logged_in = getattr(user_data, "last_logged_in", None) or "None"
+            student_bind_id = getattr(user_data, "student_bind_id", None) or "None"
+
+            if student_bind_id is None or student_bind_id is "None":
+                flash("An Error Occurred Please login again.", "danger")
+                return redirect(url_for("auth.clientLogin", userRole=userRole))
+
+            student_info = StudentInfo(
+                    student_id=student_bind_id,
+                    dob=dob,
+                    gender=gender,
+                    phone_number=phone_number,
+                    marticno=matric_no,
+                    dept=department,
+                    level=level,
+                    state=state,
+                    address=address,
+                    program=program
+            )
+
+            db.session.add(student_info)
+
             # Update the email_verify status to verify
             user_data.email_verify = "Verfied"
+            user_data.current_latitude = current_latitude
+            user_data.current_longitude = current_longitude
+            user_data.previous_latitude = previous_latitude
+            user_data.previous_longitude = previous_longitude
+            user_data.last_logged_in = current_time
+            user_data.previous_last_logged_in = previous_last_logged_in
 
             # Delete the email verify token
             db.session.delete(email_verify_record)
@@ -328,10 +363,8 @@ def verify_email(userRole, user_uid, token):
             # Inform the user that the verification was successful
             flash("Your email address has been successfully verified!", "success")
 
-            if userRole == "tenants":
-                return redirect(url_for("views.displayLandlord", userRole=userRole, property_id=property_id))
-            elif userRole == "landlords":
-                return redirect(url_for("views.clientDashboard", userRole=userRole))
+            if userRole == "students":
+                return redirect(url_for("auth.clientFaceScan", userRole=userRole, user_uid=user_uid))
             else:
                 pass
         except (firebase_auth.InvalidIdTokenError, FirebaseError, Exception, ValueError) as e:
@@ -343,6 +376,28 @@ def verify_email(userRole, user_uid, token):
 
     return render_template("auth.html", title=title, form=form, viewType=viewType)
 
+
+@auth.route("/<userRole>/face-scan/<user_uid>", methods=["GET", "POST"])
+def clientFaceScan(userRole, user_id):
+    """ This is a function that handle the face scan of the user """
+
+    # Define the valid user roles
+    valid_roles = ['students']
+
+    # Check if the provided userRole is valid
+    if userRole not in valid_roles:
+        # Redirect to a 404 page if userRole is invalid
+        return render_template("404.html"), 404
+
+    title = f"SACOETEC PROPERTY | {userRole.upper()} | Face Scan"
+    viewType = "ForgotPassword"
+    form = ForgottenPasswordForm()
+
+    if request.method == "POST":
+        # Handle the POST request
+        pass
+
+    return render_template("auth.html", title=title, form=form, viewType=viewType, userRole=userRole)
 
 
 @auth.route("/<userRole>/forgot-password", methods=['GET', 'POST'])
