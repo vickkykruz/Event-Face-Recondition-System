@@ -4,15 +4,27 @@ from dotenv import load_dotenv
 from os import path, environ, getenv
 import requests
 from website.clients.models.models import Students, StudentInfo
-from flask import request, redirect, flash, url_for, make_response, current_app, session
+from flask import request, redirect, flash, url_for, make_response, current_app, session, make_response
 from firebase_admin import auth as firebase_auth, storage, firestore
 import base64
 import random
+import os
 
 
 # Load environment variables once at startup
 load_dotenv()
 
+TELEMEDICAL_CLIENT_ID = environ.get('TELEMEDICAL_CLIENT_ID')
+EVENT_FACE_RECONGITION_CLIENT_ID = environ.get('EVENT_FACE_RECONGITION_CLIENT_ID')
+
+# Global variable to hold current time
+current_time = None
+
+# Use 'event-face' Firebase app for authentication
+#event_auth = firebase_auth.client(app=event_app)
+
+# Use 'telemedical' Firebase app for authentication
+#telemedical_auth = firebase_auth.client(app=telemedical_app)
 
 def handle_error_msg(e):
     """ This is function that handle the display of error msg """
@@ -105,6 +117,41 @@ def exchange_custom_token_for_id_token(custom_token):
         return None
 
 
+# Determine which Firebase app to use based on the token's `aud` field
+def get_firebase_app_from_token(token):
+    """ This is a function that determine which Firebase app to use based on the token """
+
+    from website import event_app, telemedical_app
+
+    try:
+        payload_json = decode_base64url(token.split('.')[1])
+        payload = json.loads(payload_json)
+
+        # Print decoded payload
+        #print("Decoded Payload:", payload)
+
+        aud = payload.get("aud")
+
+        # Print expected values
+        #print(f"Extracted 'aud': {aud}")
+        #print(f"Expected EVENT_CLIENT_ID: {EVENT_FACE_RECONGITION_CLIENT_ID}")
+        #print(f"Expected TELEMEDICAL_CLIENT_ID: {TELEMEDICAL_CLIENT_ID}")
+
+        if aud == EVENT_FACE_RECONGITION_CLIENT_ID:  # Replace with actual client ID
+            #print("Matched Event App")
+            return event_app
+        elif aud == TELEMEDICAL_CLIENT_ID:  # Replace with actual client ID
+            #print("Matched Telemedical App")
+            return telemedical_app
+        else:
+            print("No match found for 'aud' in known Firebase apps.")
+
+    except Exception as e:
+        print("Detect Firebase Token as: ", e)
+
+    return None  # Default to None if no match
+
+
 def decode_token(auth_token):
     """
     This function we want to handle three process
@@ -118,9 +165,13 @@ def decode_token(auth_token):
       b) If it is a Google O-auth token, converting the Google O-auth token to custom token then to Firebase ID token for verification.
       c). Verifying the Firebase ID token directly.
     """
+
+    from website import event_app, telemedical_app
+
     try:
+        #print("auth_token: ", auth_token)
         if is_custom_token(auth_token):
-            #print(f"Exchanging custom token: {auth_token}")
+            print(f"Exchanging custom token: {auth_token}")
             # If it's a custom token, exchange it for an ID token using the Firebase Client SDK
             id_token = exchange_custom_token_for_id_token(auth_token)
             if not id_token:
@@ -129,7 +180,13 @@ def decode_token(auth_token):
             # It's already an ID token, so use it directly
             id_token = auth_token
 
-        decoded_token = firebase_auth.verify_id_token(id_token)
+        #print("id_token: ", id_token)
+
+        firebase_app = get_firebase_app_from_token(id_token)
+        if not firebase_app:
+            return "Unable to determine the Firebase project for this token."
+
+        decoded_token = firebase_auth.verify_id_token(id_token, app=firebase_app)
         return decoded_token
 
     except firebase_auth.ExpiredIdTokenError:
@@ -161,6 +218,7 @@ def get_user_uid_from_token(token=None):
 
     # Retrieve session document from Firestore
     decoded_token = decode_token(auth_token)
+    print("decoded_token: ", decoded_token)
 
     if isinstance(decoded_token, str):  # If it's a string, it's an error message
         return None
@@ -721,3 +779,39 @@ def get_user_bind_id(landlord_bind_id, userRole):
         user_data = Landlord.query.filter_by(landlord_bind_id=landlord_bind_id).first()
 
     return user_data
+
+def broadcast_time(timezone):
+    """Broadcasts the current server time to all connected clients."""
+
+    # Import socketio
+    from website import socketio
+
+    global current_time
+
+    while True:
+        # Get current time with the server's timezone
+        current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S %Z%z')
+        current_date = datetime.now(timezone).strftime('%Y-%m-%d')
+
+        # Print the current time in the server console for verification
+        #print(f"Broadcasting current time: {current_time}")
+
+        # Emit the current time to all connected clients
+        socketio.emit('update_time', {'time': current_time, 'date': current_date})
+
+        # Wait 1 second before sending the next update
+        socketio.sleep(1)
+
+
+def start_time_thread():
+    """Starts the time broadcasting thread on server startup."""
+    thread = Thread(target=broadcast_time)
+    thread.daemon = True  # Ensures thread closes when the main program exits
+    thread.start()
+
+
+def delete_cookies_and_redirect(cookie_items, redirect_url):
+    response = make_response("Cookies deleted")  # Create a response object
+    for cookie_item in cookie_items:  # Iterate through the list of cookies
+        response.set_cookie(cookie_item, '', expires=0)  # Delete each cookie
+    return redirect(redirect_url)

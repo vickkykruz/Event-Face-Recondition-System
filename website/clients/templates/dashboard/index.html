@@ -1,0 +1,263 @@
+{% extends "layouts/dashboardBase.html" %} 
+  {% block title %} {% if title %} {{ title }} {% else %} SACOETEC || Event Face Recongition System {% endif %} 
+{%endblock %} 
+
+{% block content %}
+{% if viewType == "STUDENTS Dashboard"%}
+<div class="row">
+  <div class="col-md-12 grid-margin">
+    <div class="row">
+      <div class="col-12 col-xl-8 mb-4 mb-xl-0">
+        <h3 class="font-weight-bold">Welcome {{ user_data.name }}</h3>
+        <h6 class="font-weight-normal mb-0">
+          Last Logged In:
+          <span class="text-primary">{{ formatted_previous_last_logged_in }}</span>
+        </h6>
+      </div>
+      
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-6 grid-margin stretch-card">
+    <div class="card tale-bg">
+      <div class="card-people mt-auto">
+        <img src="{{ url_for('views.static', filename='images/dashboard/people.svg') }}" alt="people" />
+        <div class="weather-info">
+          <div class="d-flex">
+            <div>
+              <h2 class="mb-0 font-weight-normal">
+                <i class="icon-sun mr-2"></i>31<sup>C</sup>
+              </h2>
+            </div>
+            <div class="ml-2">
+              <h4 class="location font-weight-normal">Ogun State</h4>
+              <h6 class="font-weight-normal">Nigeria</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 grid-margin transparent">
+    <div class="row">
+     <h3 class="card-title">Upcomming Events</h3>
+      <div class="col-md-12 mb-4 stretch-card transparent">
+        <div class="card card-tale">
+          <a href="{{ url_for('views.attendance_scan', userRole=userRole)}}" class="card-body text-white">
+            <h4 class="mb-2"><b>Title: </b>CSC 202 (Computer Studies 202)</h4>
+            <h4 class="mb-2"><b>Lecture In Charge : </b>Dr Johnson Oluwatobi</h4>
+            <h4 class="mb-2"><b>Venue : </b> Degree Hall A</h4>
+          </a>
+        </div>
+      </div>
+
+      <div class="col-md-12 mb-4 stretch-card transparent">
+        <div class="card card-dark-blue">
+          <a href="{{ url_for('views.attendance_scan', userRole=userRole)}}" class="card-body text-white">
+            <h4 class="mb-2"><b>Title: </b>CSC 202 (Computer Studies 202)</h4>
+            <h4 class="mb-2"><b>Lecture In Charge : </b>Dr Johnson Oluwatobi</h4>
+            <h4 class="mb-2"><b>Venue : </b> Degree Hall A</h4>
+          </a>
+        </div>
+      </div>
+
+      <div class="col-md-12 mb-4 stretch-card transparent">
+        <div class="card card-tale">
+          <a href="{{ url_for('views.attendance_scan', userRole=userRole)}}" class="card-body text-white">
+            <h4 class="mb-2"><b>Title: </b>CSC 202 (Computer Studies 202)</h4>
+            <h4 class="mb-2"><b>Lecture In Charge : </b>Dr Johnson Oluwatobi</h4>
+            <h4 class="mb-2"><b>Venue : </b> Degree Hall A</h4>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-6 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body">
+        <div class="chartjs-size-monitor">
+          <div class="chartjs-size-monitor-expand"><div class=""></div></div>
+          <div class="chartjs-size-monitor-shrink"><div class=""></div></div>
+        </div>
+        <p class="card-title">Calendar</p>
+
+        <div class="datepicker">
+          <div class="datepicker-top">
+            <div class="month-selector">
+              <button
+                class="btn btn-primary btn-sm active arrow prev-month"
+              >
+                <i class="mdi mdi-chevron-left"></i>
+              </button>
+              <span class="month-name"></span>
+              <button
+                class="btn btn-primary btn-sm active arrow next-month"
+              >
+                <i class="mdi mdi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+          <div class="datepicker-calendar">
+            <div
+              class="days-container"
+              data-uid="{{ user_uid }}"
+              data-role="{{ userRole }}"
+            ></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body card-dark-blue">
+        <div class="text-center">
+          <img class="rounded-circle mb-3" style="border-radius: 50%; object-fit: cover;" src="{{ user_info.photo_url }}" width="100" height="100" alt="user">
+          <h3 class="card-title text-center" style="">{{ user_data.name }}</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="table dashboard-tab">
+            <tbody>
+              <tr>
+                <th>Email</th>
+                <th>{{ user_data.email }}</th>
+              </tr>
+              <tr>
+                <th>Martic Number</th>
+                <th>{{ user_info.marticno }}</th>
+              </tr>
+              <tr>
+                <th>Program</th>
+                <th>{{ user_info.program }}</th>
+              </tr>
+              <tr>
+                <th>Department</th>
+                <th>{{ user_info.dept }}</th>
+              </tr>
+              <tr>
+                <th>Level</th>
+                <th>{{ user_info.level }}</th>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="row">
+  <div class="col-md-12 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body">
+        <p class="card-title">Events</p>
+        <div class="row">
+          <div class="col-12">
+            <div class="table-responsive">
+              <div
+                id="example_wrapper"
+                class="dataTables_wrapper dt-bootstrap4 no-footer"
+              >
+                <div class="row">
+                  <div class="col-sm-12 col-md-6"></div>
+                  <div class="col-sm-12 col-md-6"></div>
+                </div>
+                <div class="row">
+                  <div class="col-sm-12">
+                    <table
+                      id="example"
+                      class="display expandable-table dataTable no-footer"
+                      style="width: 100%"
+                      role="grid"
+                    >
+                      <thead>
+                        <tr role="row">
+                          <th
+                            class="select-checkbox sorting_disabled"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 86.7333px"
+                            aria-label="Quote#"
+                          >
+                            S/N#
+                          </th>
+                          <th
+                            class="sorting_asc"
+                            tabindex="0"
+                            aria-controls="example"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 102px"
+                            aria-sort="ascending"
+                            aria-label="Product: activate to sort column descending"
+                          >
+                            Event Title
+                          </th>
+                          
+                          <th
+                            class="sorting"
+                            tabindex="0"
+                            aria-controls="example"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 88.2px"
+                            aria-label="Status: activate to sort column ascending"
+                          >
+                            Status
+                          </th>
+                          <th
+                            class="sorting"
+                            tabindex="0"
+                            aria-controls="example"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 163.283px"
+                            aria-label="Business type: activate to sort column ascending"
+                          >
+                            Date
+                          </th>
+                          <th
+                            class="sorting"
+                            tabindex="0"
+                            aria-controls="example"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 154.983px"
+                            aria-label="Policy holder: activate to sort column ascending"
+                          >
+                            Time
+                          </th>
+                         
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="odd">
+                          <td valign="top" colspan="8" class="dataTables_empty">
+                            Loading...
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-sm-12 col-md-5"></div>
+                  <div class="col-sm-12 col-md-7"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{%endblock %}

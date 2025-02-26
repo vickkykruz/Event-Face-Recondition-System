@@ -30,6 +30,8 @@ class Students(db.Model, UserMixin):
     previous_latitude = db.Column(db.String(100))
     previous_longitude = db.Column(db.String(100))
     face_encoding = db.Column(db.String, nullable=True)
+    last_logged_in = db.Column(db.String, nullable=True)
+    previous_last_logged_in = db.Column(db.String, nullable=True)
     #password_hash = db.Column(db.String(128), nullable=False)
     create_date = db.Column(db.DateTime(timezone=True), default=func.now())
     update_date = db.Column(db.DateTime(timezone=True), onupdate=func.now())

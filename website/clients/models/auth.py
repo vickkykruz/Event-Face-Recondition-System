@@ -43,11 +43,33 @@ auth = Blueprint(
 )
 
 # Define the routes for user authenication
-@auth.route("/logout")
-def clientLogout():
-    """This is a function that logout the user from their account"""
-    session.pop("bind_id", None)
-    return redirect(url_for("auth.clientLogin"))
+@auth.route("/<userRole>/logout", methods=['GET'])
+def logout(userRole):
+    """This function handles the logout process for all user roles."""
+
+    # Define the valid user roles
+    valid_roles = ['students']
+
+    # Check if the provided userRole is valid
+    if userRole not in valid_roles:
+        # Redirect to a 404 page if userRole is invalid
+        return render_template("404.html"), 404
+
+    background_session_id = request.cookies.get('background_session_id')
+    if background_session_id:
+        current_app.redis_client.delete(f'session_data:{background_session_id}')
+
+    # Create a response for the logout process
+    response = make_response(redirect(url_for('auth.clientLogin', userRole=userRole)))
+
+    # Remove the auth_token cookie
+    response.set_cookie('auth_token', '', expires=0, httponly=True, secure=False)
+    response.set_cookie('background_session_id', '', httponly=True, secure=False)
+
+
+    # Flash a message to the user (optional)
+    flash('You have successfully logged out.', 'success')
+    return response
 
 
 @auth.route("/<userRole>/login", methods=['GET', 'POST'])
@@ -100,28 +122,46 @@ def clientLogin(userRole):
                 return redirect(url_for('auth.resend_verification', userRole=userRole))
 
             # Get location from IP
-            user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+            #user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
 
-            if user_ip and ',' in user_ip:
-                user_ip = user_ip.split(',')[0].strip()
+            #if user_ip and ',' in user_ip:
+            #    user_ip = user_ip.split(',')[0].strip()
 
-            match = re.search(r'::ffff:(\d+\.\d+\.\d+\.\d+)', user_ip)
-            if match:
-                user_ip = match.group(1)
+            #match = re.search(r'::ffff:(\d+\.\d+\.\d+\.\d+)', user_ip)
+            #if match:
+            #    user_ip = match.group(1)
 
-            print('UserIP Address: ', user_ip)
+            #print('UserIP Address: ', user_ip)
 
-            user_location = get_location_from_ip(user_ip, IPINFO_API_TOKEN)
+            #user_location = get_location_from_ip(user_ip, IPINFO_API_TOKEN)
 
-            if not user_location:
-                flash("An error occured. Please try again later.", "danger")
-                print('An error occureds. Please try again later.')
-                return redirect(url_for('auth.clientLogin', userRole=userRole))
+            #if not user_location:
+            #    flash("An error occured. Please try again later.", "danger")
+            #    print('An error occureds. Please try again later.')
+            #    return redirect(url_for('auth.clientLogin', userRole=userRole))
+
+            #current_latitude = user_location['latitude']
+            #current_longitude = user_location['longitude']
+            #previous_latitude = previous_latitude = getattr(user_data, "previous_latitude", None) or "None"
+            #previous_longitude = getattr(user_data, "previous_longitude", None) or "None"
+
+            # Get the current time and the previous 'last_logged_in' and user,s location
+            current_time = datetime.utcnow()  # Current time in UTC
+            previous_last_logged_in = getattr(user_data, "last_logged_in", None) or "None"
+
+            #user_data.current_latitude = current_latitude
+            #user_data.current_longitude = current_longitude
+            #user_data.previous_latitude = previous_latitude
+            #user_data.previous_longitude = previous_longitude
+            user_data.last_logged_in = current_time
+            user_data.previous_last_logged_in = previous_last_logged_in
+
+            # Commit the changes
+            db.session.commit()
+
 
             # Store session token in cookies
-            if userRole == "tenants":
-                response = make_response(redirect(url_for('views.displayLandlord', userRole=userRole, property_id=property_id)))
-            elif userRole == "landlords":
+            if userRole == "students":
                 response = make_response(redirect(url_for('views.clientDashboard', userRole=userRole)))
             response.set_cookie('auth_token', auth_token, httponly=True, secure=False, max_age=3600)
 

@@ -1,0 +1,238 @@
+{% extends "layouts/dashboardBase.html" %}
+  {% block title %} {% if title %} {{ title }} {% else %} SACOETEC || Event Face Recongition System {% endif %}
+{%endblock %}
+
+{% block content %}
+{% if viewType == "STUDENTS Attendance"%}
+<div class="row">
+  <div class="col-md-12 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body mt-auto">
+        <div class="card-header">
+          <h2 class="card-title">Face Verfication</h2>
+        </div>
+        <div class="card-body text-center mt-4">
+
+          <div id="video-container" class="form-group">
+            <!-- Webcam Video -->
+            <video id="video" width="450" class="img-fluid" height="100%" style="border-radius: 10%;" autoplay></video>
+            <p id="countdown"></p>
+          </div>
+
+          <div class="form-group">
+            <!-- Canvas to Capture Image -->
+            <canvas id="canvas" style="display: none;"></canvas>
+          </div>
+
+          <div class="mt-3">
+            <p id="status"></p>
+          </div>
+
+          <div class="mt-3 d-flex justify-content-center align-items-center">
+            <!-- Capture & Submit Buttons -->
+            <button class="btn bg-info text-white btn-lg font-weight-medium auth-form-btn me-2" id="capture">Capture Face</button>
+            <button class="btn bg-info text-white btn-lg font-weight-medium auth-form-btn ms-2" id="submit" style="display: none;">Verify Face</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% elif viewType == "Suceessfull_Verification" %}
+<div class="row">
+  <div class="col-md-12 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body mt-auto">
+        <div class="text-center">
+          <div class="card-body text-center">
+            <img alt="suceessfull" src="{{ url_for('views.static', filename='images/success.png') }}" class="img-fluid" style="width: 250px;">
+            <h1 class="mt-3 text-primary fw-bold">Done</h1>
+            <p class="lead">Your attendance has the marked successfully. Click on <b>Go Home</b> to login back to your dashboard</p>
+            <a href="{{ url_for('views.clientDashboard', userRole=userRole) }}" class="btn btn-link btn-lg fs-2 fw-bold mt-3" style="font-size: 1.4rem;font-weight: 800;">Go Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% elif viewType == "events_page" %}
+<div class="row">
+  <div class="col-md-6 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body mt-auto">
+        <div class="text-center">
+
+          <div class="datepicker">
+            <div class="datepicker-top">
+              <div class="month-selector">
+                <button
+                  class="btn btn-primary btn-sm active arrow prev-month"
+                >
+                  <i class="mdi mdi-chevron-left"></i>
+                </button>
+                <span class="month-name"></span>
+                <button
+                  class="btn btn-primary btn-sm active arrow next-month"
+                >
+                  <i class="mdi mdi-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+            <div class="datepicker-calendar">
+              <div
+                class="days-container"
+                data-uid="{{ user_uid }}"
+                data-role="{{ userRole }}"
+              ></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 grid-margin stretch-card">
+    <div class="row">
+     <h3 class="card-title">Upcomming Events</h3>
+      <div class="col-md-12 mb-4 stretch-card transparent">
+        <div class="card card-tale">
+          <a href="{{ url_for('views.attendance_scan', userRole=userRole)}}" class="card-body text-white">
+            <h4 class="mb-2"><b>Title: </b>CSC 202 (Computer Studies 202)</h4>
+            <h4 class="mb-2"><b>Lecture In Charge : </b>Dr Johnson Oluwatobi</h4>
+            <h4 class="mb-2"><b>Venue : </b> Degree Hall A</h4>
+          </a>
+        </div>
+      </div>
+
+      <div class="col-md-12 mb-4 stretch-card transparent">
+        <div class="card card-dark-blue">
+          <a href="{{ url_for('views.attendance_scan', userRole=userRole)}}" class="card-body text-white">
+            <h4 class="mb-2"><b>Title: </b>CSC 202 (Computer Studies 202)</h4>
+            <h4 class="mb-2"><b>Lecture In Charge : </b>Dr Johnson Oluwatobi</h4>
+            <h4 class="mb-2"><b>Venue : </b> Degree Hall A</h4>
+          </a>
+        </div>
+      </div>
+
+      <div class="col-md-12 mb-4 stretch-card transparent">
+        <div class="card card-tale">
+          <a href="{{ url_for('views.attendance_scan', userRole=userRole)}}" class="card-body text-white">
+            <h4 class="mb-2"><b>Title: </b>CSC 202 (Computer Studies 202)</h4>
+            <h4 class="mb-2"><b>Lecture In Charge : </b>Dr Johnson Oluwatobi</h4>
+            <h4 class="mb-2"><b>Venue : </b> Degree Hall A</h4>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body">
+        <p class="card-title">Events</p>
+        <div class="row">
+          <div class="col-12">
+            <div class="table-responsive">
+              <div
+                id="example_wrapper"
+                class="dataTables_wrapper dt-bootstrap4 no-footer"
+              >
+                <div class="row">
+                  <div class="col-sm-12 col-md-6"></div>
+                  <div class="col-sm-12 col-md-6"></div>
+                </div>
+                <div class="row">
+                  <div class="col-sm-12">
+                    <table
+                      id="example"
+                      class="display expandable-table dataTable no-footer"
+                      style="width: 100%"
+                      role="grid"
+                    >
+                      <thead>
+                        <tr role="row">
+                          <th
+                            class="select-checkbox sorting_disabled"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 86.7333px"
+                            aria-label="Quote#"
+                          >
+                            S/N#
+                          </th>
+                          <th
+                            class="sorting_asc"
+                            tabindex="0"
+                            aria-controls="example"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 102px"
+                            aria-sort="ascending"
+                            aria-label="Product: activate to sort column descending"
+                          >
+                            Event Title
+                          </th>
+                          
+                          <th
+                            class="sorting"
+                            tabindex="0"
+                            aria-controls="example"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 88.2px"
+                            aria-label="Status: activate to sort column ascending"
+                          >
+                            Status
+                          </th>
+                          <th
+                            class="sorting"
+                            tabindex="0"
+                            aria-controls="example"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 163.283px"
+                            aria-label="Business type: activate to sort column ascending"
+                          >
+                            Date
+                          </th>
+                          <th
+                            class="sorting"
+                            tabindex="0"
+                            aria-controls="example"
+                            rowspan="1"
+                            colspan="1"
+                            style="width: 154.983px"
+                            aria-label="Policy holder: activate to sort column ascending"
+                          >
+                            Time
+                          </th>
+                         
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="odd">
+                          <td valign="top" colspan="8" class="dataTables_empty">
+                            Loading...
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-sm-12 col-md-5"></div>
+                  <div class="col-sm-12 col-md-7"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
