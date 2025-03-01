@@ -10,8 +10,8 @@ from website.database.database import db
 from website.mailer.mail import mail
 from website.clients.models.views import views
 from website.clients.models.auth import auth
-#from website.admin.models.auth import adminAuth
-#from website.admin.models.views import adminViews
+from website.admin.models.auth import adminAuth
+from website.admin.models.views import adminViews
 from os import path, environ, getenv
 from datetime import timedelta
 import firebase_admin
@@ -119,8 +119,8 @@ def create_app():
     # Register the blueprint
     app.register_blueprint(views, url_prefix="/")
     app.register_blueprint(auth, url_prefix="/auth")
-    #app.register_blueprint(adminAuth, url_prefix="/admin")
-    #app.register_blueprint(adminViews, url_prefix="/admin/page")
+    app.register_blueprint(adminAuth, url_prefix="/admin")
+    app.register_blueprint(adminViews, url_prefix="/admin/page")
 
     # Custom error handler for 404 Not Found
     @app.errorhandler(404)

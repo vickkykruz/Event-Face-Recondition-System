@@ -259,5 +259,166 @@
     </div>
   </div>
 </div>
+{% elif viewType == "Admin Dashboard" %}
+<div class="row">
+  <div class="col-md-12 grid-margin">
+    <div class="row">
+      <div class="col-12 col-xl-8 mb-4 mb-xl-0">
+        <h3 class="font-weight-bold">Welcome {{ user_data.name }}</h3>
+        <h6 class="font-weight-normal mb-0">
+          Last Logged In:
+          <span class="text-primary">{{ formatted_previous_last_logged_in }}</span>
+        </h6>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12 grid-margin">
+    <div class="row">
+      <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
+        <div class="card card-dark-blue">
+          <a href="{{ url_for('adminViews.venue_overview') }}" class="card-body text-white">
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <div>
+                <p class="mb-4">Total Venues</p>
+                <p class="fs-30 mb-2">61344</p>
+              </div>
+              <div>
+                <i class="ti ti-location-pin" style="font-size: 2rem"></i>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+      <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
+        <div class="card card-dark-blue">
+          <a href="/admin/page/events-overview" class="card-body text-white">
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <div>
+                <p class="mb-4">Total Events</p>
+                <p class="fs-30 mb-2">61344</p>
+              </div>
+              <div>
+                <i class="ti ti-calendar" style="font-size: 2rem"></i>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+      <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
+        <div class="card card-dark-blue">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <div>
+                <p class="mb-4">Attendance Sheet</p>
+                <p class="fs-30 mb-2">NULL</p>
+              </div>
+              <div>
+                <i class="icon-paper" style="font-size: 2rem"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% elif viewType == "Admin Venue-OverView" %}
+<div class="row">
+  <div class="col-md-12 grid-margin">
+    <div class="row">
+      <div class="col-12 col-xl-8 mb-4 mb-xl-0">
+        <h3 class="font-weight-bold">Venue Overview</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12 grid-margin">
+    <div class="row">
+      <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
+        <div class="card card-dark-blue">
+          <a href="/admin/page/upload-Venue" class="card-body text-white">
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <div>
+                <p class="mb-4">Upload View</p>
+                <p class="fs-30 mb-2">NULL</p>
+              </div>
+              <div>
+                <i class="ti ti-location-pin" style="font-size: 2rem"></i>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+      <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
+        <div class="card card-dark-blue">
+          <a href="/admin/page/all-venues" class="card-body text-white">
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <div>
+                <p class="mb-4">List Of Registerd Venues</p>
+                <p class="fs-30 mb-2">NULL</p>
+              </div>
+              <div>
+                <i class="icon-paper" style="font-size: 2rem"></i>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% elif viewType == "Admin Event-OverView" %}
+<div class="row">
+  <div class="col-md-12 grid-margin">
+    <div class="row">
+      <div class="col-12 col-xl-8 mb-4 mb-xl-0">
+        <h3 class="font-weight-bold">Event Overview</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12 grid-margin">
+    <div class="row">
+      <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
+        <div class="card card-dark-blue">
+          <a href="/admin/page/upload-Venue" class="card-body text-white">
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <div>
+                <p class="mb-4">Upload Event</p>
+                <p class="fs-30 mb-2">NULL</p>
+              </div>
+              <div>
+                <i class="ti ti-calendar" style="font-size: 2rem"></i>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+      <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
+        <div class="card card-dark-blue">
+          <a href="/admin/page/all-venues" class="card-body text-white">
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <div>
+                <p class="mb-4">List Of Events</p>
+                <p class="fs-30 mb-2">NULL</p>
+              </div>
+              <div>
+                <i class="icon-paper" style="font-size: 2rem"></i>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endif %}
 {%endblock %}
