@@ -249,7 +249,14 @@
   <div class="col-md-4 my-3 grid-margin stretch-card">
     <div class="card">
       <div class="card-body">
-        {% if venue_details %}
+        {% if event_details and event_details.event_status == "pending" %}
+          <h1><span class="badge text-bg-warning">{{ event_details.event_status }}</span></h1>
+        {% elif event_details and event_details.event_status == "started" %}
+          <h1><span class="badge text-bg-success">{{ event_details.event_status }}</span></h1>
+        {% elif event_details and event_details.event_status == "done" %}
+          <h1><span class="badge text-bg-primary">{{ event_details.event_status }}</span></h1>
+        {% endif %}
+        {% if details == "viewVenue" and venue_details %}
 
          <div id="location_details" data-longitude="{{ venue_details.longitude }}" data-latitude="{{ venue_details.latitude }}" class="mt-3">
             <label for="venueName" class="form-label">Name Of Venue</label>
@@ -273,6 +280,39 @@
           <div class="mt-3">
             <label for="venueAddress" class="form-label">Longitude</label>
             <input type="text" class="form-control" id="longitude" value="{{ venue_details.longitude }}" readonly>
+          </div>
+        {% elif details == "viewEvent" and venue_details and event_details  %}
+          <div class="mt-3">
+            <label for="venueAddress" class="form-label">Event Title</label>
+            <input type="text" class="form-control" id="event_tile" value="{{ event_details.event_title }}" readonly>
+          </div>
+          <div class="mt-3">
+            <label for="venueAddress" class="form-label">Event Description</label>
+            <input type="text" class="form-control" id="event_desc" value="{{ event_details.event_description }}" readonly>
+          </div>
+          <div class="mt-3">
+            <label for="venueAddress" class="form-label">Event Date</label>
+            <input type="text" class="form-control" id="event_date" value="{{ event_details.event_date }}" readonly>
+          </div>
+          <div class="mt-3">
+            <label for="venueAddress" class="form-label">Event Time</label>
+            <input type="text" class="form-control" id="event_time" value="{{ event_details.event_time }}" readonly>
+          </div>
+          <div class="mt-3">
+            <label for="venueAddress" class="form-label">Department</label>
+            <input type="text" class="form-control" id="department" value="{{ event_details.department }}" readonly>
+          </div>
+          <div class="mt-3">
+            <label for="venueAddress" class="form-label">Level</label>
+            <input type="text" class="form-control" id="level" value="{{ event_details.level }} Level" readonly>
+          </div>
+          <div id="location_details" data-longitude="{{ venue_details.longitude }}" data-latitude="{{ venue_details.latitude }}" class="mt-3">
+            <label for="venueName" class="form-label">Venue</label>
+            <input type="text" class="form-control" id="venueName" value="{{ venue_details.venue_name }}" readonly>
+          </div>
+          <div class="mt-3">
+            <label for="venueAddress" class="form-label">Official Address Of Venue</label>
+            <input type="text" class="form-control" id="venueAddress" value="{{ venue_details.venue_address }}" readonly>
           </div>
         {% else%}
         <p class="card-title">Register Venue</p>
@@ -333,11 +373,15 @@
               </td>
               <td class="text-center">
                 <a href="/admin/page/upload-Venue/viewVenue/{{ venue.venue_bind_id }}" class="btn btn-primary btn-lg">
-                  View Venue
+                  View
                 </a>
               </td>
             </tr>
               {% endfor %}
+            {% else %}
+            <tr>
+              <th class="text-danger">No data stored</th>
+            </tr>
             {% endif %}
           </tbody>
         </table>
@@ -352,7 +396,177 @@
       <div class="card-body">
         <p class="card-title">Upload Event</p>
 
-        
+        <form action="{{ url_for('adminViews.upload_event') }}" method="POST">
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            {{ form.event_title.label(class="form-label") }}
+            {{ form.event_title(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.event_description.label(class="form-label") }}
+            {{ form.event_description(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.event_date.label(class="form-label") }}
+            {{ form.event_date(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.event_time.label(class="form-label") }}
+            {{ form.event_time(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.department.label(class="form-label") }}
+            {{ form.department(class="form-select form-select-lg ") }}
+          </div>
+          <div class="mb-3">
+            {{ form.level.label(class="form-label") }}
+            {{ form.level(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ form.venue.label(class="form-label") }}
+            {{ form.venue(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ form.submit }}
+          </div>
+        </form>        
+      </div>
+    </div>
+  </div>
+</div>
+{% elif viewType == "Admin All Events" %}
+<div class="row">
+  <div class="col-md-12 my-3 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body">
+        <p class="card-title">All Events</p>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th class="text-center" scope="col"> Events Title</th>
+              <th class="text-center" scope="col"> Department</th>
+              <th class="text-center" scope="col"> Level</th>
+              <th class="text-center" scope="col"> Status</th>
+              <th class="text-center" scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if all_events and details and details == "attendance" %}
+              {% for event in all_events %}
+            <tr>
+              <th scope="row">
+                <a href="/admin/page/attendance-sheet/{{ event.event_bind_id }}">{{ loop.index }}</a>
+              </th>
+              <td>
+                <a href="/admin/page/attendance-sheet/{{ event.event_bind_id }}">{{ event.event_title }}</a>
+              </td>
+              <td>
+                <a href="/admin/page/attendance-sheet/{{ event.event_bind_id }}">{{ event.department }}</a>
+              </td>
+              <td>
+                <a href="/admin/page/attendance-sheet/{{ event.event_bind_id }}">{{ event.level }}</a>
+              </td>
+              <td>
+                <a href="/admin/page/attendance-sheet/{{ event.event_bind_id }}">
+                  {% if event.event_status == "pending" %}
+                  <h1><span class="badge text-bg-warning">{{ event.event_status }}</span></h1>
+                  {% elif event.event_status == "started" %}
+                  <h1><span class="badge text-bg-success">{{ event.event_status }}</span></h1>
+                  {% elif event.event_status == "done" %}
+                  <h1><span class="badge text-bg-primary">{{ event.event_status }}</span></h1>
+                  {% endif %}
+                </a>
+              </td>
+              <td class="text-center">
+                <a href="/admin/page/attendance-sheet/{{ event.event_bind_id }}" class="btn btn-primary btn-lg">
+                  View
+                </a>
+              </td>
+            </tr>
+              {% endfor %}
+            {% elif all_events %}
+               {% for event in all_events %}
+            <tr>
+              <th scope="row">
+                <a href="/admin/page/upload-Venue/viewEvent/{{ event.event_bind_id }}">{{ loop.index }}</a>
+              </th>
+              <td>
+                <a href="/admin/page/upload-Venue/viewEvent/{{ event.event_bind_id }}">{{ event.event_title }}</a>
+              </td>
+              <td>
+                <a href="/admin/page/upload-Venue/viewEvent/{{ event.event_bind_id }}">{{ event.department }}</a>
+              </td>
+              <td>
+                <a href="/admin/page/upload-Venue/viewEvent/{{ event.event_bind_id }}">{{ event.level }}</a>
+              </td>
+              <td>
+                <a href="/admin/page/upload-Venue/viewEvent/{{ event.event_bind_id }}">
+                  {% if event.event_status == "pending" %}
+                  <h1><span class="badge text-bg-warning">{{ event.event_status }}</span></h1>
+                  {% elif event.event_status == "started" %}
+                  <h1><span class="badge text-bg-success">{{ event.event_status }}</span></h1>
+                  {% elif event.event_status == "done" %}
+                  <h1><span class="badge text-bg-primary">{{ event.event_status }}</span></h1>
+                  {% endif %}
+                </a>
+              </td>
+              <td class="text-center">
+                <a href="/admin/page/upload-Venue/viewEvent/{{ event.event_bind_id }}" class="btn btn-primary btn-lg">
+                  View
+                </a>
+              </td>
+            </tr>
+              {% endfor %}
+            {% else %}
+            <tr>
+              <th class="text-danger">No data stored</th>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% elif viewType == "Admin Attendance" %}
+<div class="row">
+  <div class="col-md-12 my-3 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body">
+        <p class="card-title">Events Attendances</p>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th class="text-center" scope="col"> Name</th>
+              <th class="text-center" scope="col"> Attendance Status</th>
+              <th class="text-center" scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if event_attendance %}
+              {% for attendancee in event_attendance %}
+            <tr>
+              <th scope="row">{{ loop.index }}</th>
+              <td>{{ attendancee.name }}</td>
+              <td>Test</td>
+              <td class="text-center">
+                <button type="button" disabled class="btn btn-primary btn-lg">
+                  Action
+                </button>
+              </td>
+            </tr>
+              {% endfor %}
+            {% else %}
+            <tr>
+              <th class="text-danger">No data stored</th>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>

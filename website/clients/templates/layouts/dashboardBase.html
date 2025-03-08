@@ -619,13 +619,13 @@
             </li>
            
             <li class="nav-item">
-              <a class="nav-link" href="/admin/page/events">
+              <a class="nav-link" href="/admin/page/events-overview">
                 <i class="ti ti-calendar menu-icon"></i>
                 <span class="menu-title">Events</span>
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="/admin/page/attendend-sheet">
+              <a class="nav-link" href="/admin/page/all-events/attendance">
                 <i class="icon-paper menu-icon"></i>
                 <span class="menu-title">Attendance Sheet</span>
               </a>
@@ -687,7 +687,24 @@
         </nav>
         <!-- partial -->
         <div class="main-panel">
-          <div class="content-wrapper">{% block content %} {% endblock %}</div>
+          <div class="content-wrapper">
+            {% with messages = get_flashed_messages(with_categories=true) %} 
+              {% if messages %} {% for category, message in messages %}
+        <div
+          class="alert alert-{{ category }} alert-dismissible fade show"
+          role="alert"
+        >
+          {{ message }}
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            aria-label="Close"
+          ></button>
+        </div>
+        {% endfor %} {% endif %} {% endwith %}
+            {% block content %} {% endblock %}
+          </div>
           <!-- content-wrapper ends -->
 
           <!-- partial:partials/_footer.html -->

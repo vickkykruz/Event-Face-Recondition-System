@@ -4,11 +4,13 @@ from dotenv import load_dotenv
 from os import path, environ, getenv
 import requests
 from website.clients.models.models import Students, StudentInfo
+from website.admin.models.models import Events, Venues
 from flask import request, redirect, flash, url_for, make_response, current_app, session, make_response
 from firebase_admin import auth as firebase_auth, storage, firestore
 import base64
 import random
 import os
+from website import db
 
 
 # Load environment variables once at startup
@@ -815,3 +817,32 @@ def delete_cookies_and_redirect(cookie_items, redirect_url):
     for cookie_item in cookie_items:  # Iterate through the list of cookies
         response.set_cookie(cookie_item, '', expires=0)  # Delete each cookie
     return redirect(redirect_url)
+
+
+def get_new_events(department, level):
+    """ This function that get all the user new events """
+
+    return Events.query.filter(
+            Events.department == department,
+            Events.level == level,
+            Events.event_status == "pending"
+        ).order_by(
+            Events.event_date, Events.event_time
+        ).all()
+
+
+
+def get_lastest_event(department, level):
+    """ This function that get all the user new events """
+
+    upcoming_events = db.session.query(Events, Venues).join(
+            Venues, Venues.venue_bind_id == Events.venue_id
+    ).filter(
+            Events.department == department,
+            Events.level == level,
+            Events.event_status == "pending"
+    ).order_by(
+            Events.event_date.desc(), Events.event_time.desc()
+    ).limit(3).all()
+
+    return upcoming_events

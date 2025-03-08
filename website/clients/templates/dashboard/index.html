@@ -42,35 +42,25 @@
   <div class="col-md-6 grid-margin transparent">
     <div class="row">
      <h3 class="card-title">Upcomming Events</h3>
-      <div class="col-md-12 mb-4 stretch-card transparent">
-        <div class="card card-tale">
-          <a href="{{ url_for('views.attendance_scan', userRole=userRole)}}" class="card-body text-white">
-            <h4 class="mb-2"><b>Title: </b>CSC 202 (Computer Studies 202)</h4>
-            <h4 class="mb-2"><b>Lecture In Charge : </b>Dr Johnson Oluwatobi</h4>
-            <h4 class="mb-2"><b>Venue : </b> Degree Hall A</h4>
-          </a>
+      {% if upcomming_events %}
+        {% for item in upcomming_events %}
+        <div class="col-md-12 mb-4 stretch-card transparent">
+          <div class="card card-tale">
+            <a href="{{ url_for('views.locate_venue', userRole=userRole, details='locate_user', venue_bind_id=item[0].event_bind_id )}}" class="card-body text-white">
+                <h4 class="mb-2"><b>Title: </b> {{ item[0].event_title }}</h4>
+                <h4 class="mb-2"><b>Venue : </b> {{ item[1].venue_name }}</h4>
+                <h4 class="mb-2"><b>Date: </b>{{ item[0].event_date.strftime('%Y-%m-%d') }}</h4>
+                <h4 class="mb-2"><b>Time: </b>{{ item[0].event_time.strftime('%H:%M %p') }}</h4>
+            </a>
+          </div>
         </div>
-      </div>
+        {% endfor %}
+      {% else %}
+      <p>No results</p>
+      <h3 class="card-title text-danger">No Upcomming Events</h3>
+      {% endif %}
 
-      <div class="col-md-12 mb-4 stretch-card transparent">
-        <div class="card card-dark-blue">
-          <a href="{{ url_for('views.attendance_scan', userRole=userRole)}}" class="card-body text-white">
-            <h4 class="mb-2"><b>Title: </b>CSC 202 (Computer Studies 202)</h4>
-            <h4 class="mb-2"><b>Lecture In Charge : </b>Dr Johnson Oluwatobi</h4>
-            <h4 class="mb-2"><b>Venue : </b> Degree Hall A</h4>
-          </a>
-        </div>
-      </div>
-
-      <div class="col-md-12 mb-4 stretch-card transparent">
-        <div class="card card-tale">
-          <a href="{{ url_for('views.attendance_scan', userRole=userRole)}}" class="card-body text-white">
-            <h4 class="mb-2"><b>Title: </b>CSC 202 (Computer Studies 202)</h4>
-            <h4 class="mb-2"><b>Lecture In Charge : </b>Dr Johnson Oluwatobi</h4>
-            <h4 class="mb-2"><b>Venue : </b> Degree Hall A</h4>
-          </a>
-        </div>
-      </div>
+      
     </div>
 
   </div>
@@ -238,11 +228,33 @@
                         </tr>
                       </thead>
                       <tbody>
+                        {% if all_new_evenets %}
+                        {% for event in all_new_evenets %}
                         <tr class="odd">
-                          <td valign="top" colspan="8" class="dataTables_empty">
-                            Loading...
+                          <td valign="top" class="dataTables_empty">
+                            {{ loop.index }}
+                          </td>
+                          <td valign="top" class="dataTables_empty">
+                            {{ event.event_title }}
+                          </td>
+                          <td valign="top" class="dataTables_empty">
+                            {{ event.event_status }}
+                          </td>
+                          <td valign="top" class="dataTables_empty">
+                            {{ event.event_date.strftime('%Y-%m-%d') }}
+                          </td>
+                          <td valign="top" class="dataTables_empty">
+                            {{ event.event_time.strftime('%H:%M %p') }}
                           </td>
                         </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr class="odd">
+                          <td valign="top" colspan="5" class="dataTables_empty text-danger">
+                            No events listed.
+                          </td>
+                        </tr>
+                        {% endif %}
                       </tbody>
                     </table>
                   </div>
@@ -310,7 +322,7 @@
       </div>
       <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
         <div class="card card-dark-blue">
-          <div class="card-body">
+          <a href="/admin/page/all-events/attendance" class="card-body text-white">
             <div class="d-flex justify-content-between align-items-center p-3">
               <div>
                 <p class="mb-4">Attendance Sheet</p>
@@ -320,7 +332,7 @@
                 <i class="icon-paper" style="font-size: 2rem"></i>
               </div>
             </div>
-          </div>
+          </a>
         </div>
       </div>
     </div>
@@ -389,7 +401,7 @@
     <div class="row">
       <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
         <div class="card card-dark-blue">
-          <a href="/admin/page/upload-Venue" class="card-body text-white">
+          <a href="/admin/page//upload_event" class="card-body text-white">
             <div class="d-flex justify-content-between align-items-center p-3">
               <div>
                 <p class="mb-4">Upload Event</p>
@@ -404,7 +416,7 @@
       </div>
       <div class="col-12 col-xl-4 col-lg-4 col-md-6 mb-4 mb-xl-0 stretch-card transparent">
         <div class="card card-dark-blue">
-          <a href="/admin/page/all-venues" class="card-body text-white">
+          <a href="/admin/page/all-events" class="card-body text-white">
             <div class="d-flex justify-content-between align-items-center p-3">
               <div>
                 <p class="mb-4">List Of Events</p>
