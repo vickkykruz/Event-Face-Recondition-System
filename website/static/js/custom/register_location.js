@@ -63,6 +63,8 @@
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
                 function (position) {
+                    console.log("Latitude:", position.coords.latitude);
+                    console.log("Longitude:", position.coords.longitude);
                     const userLocation = {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude
@@ -77,7 +79,8 @@
                     // Update the displayed latitude and longitude
                     updateLatLng(userLocation);
                 },
-                function () {
+                function (error) {
+                   console.error("Geolocation error:", error);
                     showAlert("Real-time location tracking failed. Using default location.");
                     //alert("Real-time location tracking failed. Using default location.");
                 },
@@ -87,7 +90,10 @@
                     timeout: 10000 // Maximum time to wait for location update
                 }
             );
+        } else {
+           console.error("Geolocation is not supported by this browser.");
         }
+
     }
 
     document.getElementById("venueForm").addEventListener("submit", function (event) {

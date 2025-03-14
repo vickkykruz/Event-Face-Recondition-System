@@ -22,6 +22,7 @@ import requests
 from flask_socketio import SocketIO, emit
 import re
 from website.clients.models.utils import get_location_from_ip
+from website.classes.scheduler_config_class import scheduler, init_scheduler
 
 
 # Load environment variables once at startup
@@ -55,12 +56,16 @@ def create_app():
     """This is a function that issues the name of the app"""
     app = Flask(__name__)  # This represent the name of the file
     # This is going to encrpt or secure D cookie
+
+    is_celery_worker = environ.get("IS_CELERY_WORKER", "False") == "True"
+
     app.config["SECRET_KEY"] = secrets.token_hex(16)
     # Set session timeout to 1 hour (for example)
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=1)
     app.config['SESSION_COOKIE_SECURE'] = True
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
     
     # Firebase Pyrebase Config (Replace with your actual Firebase project details)
     firebase_config = {
@@ -115,6 +120,14 @@ def create_app():
     mail.init_app(app)
 
     socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=120, ping_interval=25, message_queue="redis://localhost:6379/1")
+
+    # Initialize APScheduler
+    app.config["IS_CELERY_WORKER"] = is_celery_worker
+    if not app.config.get("IS_CELERY_WORKER", False):
+        init_scheduler(app)
+
+    app.config['SERVER_NAME'] = 'c681-102-89-33-110.ngrok-free.app'  # replace with your actual domain or localhost for testing
+    app.config['PREFERRED_URL_SCHEME'] = 'https'
 
     # Register the blueprint
     app.register_blueprint(views, url_prefix="/")

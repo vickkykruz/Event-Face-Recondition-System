@@ -59,5 +59,7 @@ def get_selected_students(department, level):
 def get_event_attendance(event_id):
     """ This is a function that fetch all the students who is meant to attend this event """
 
-    return Attendance.query.filter_by(event_id=event_id).all()
+    return Attendance.query.join(
+            Students, Students.student_bind_id = Attendance.student_bind_id
+    ).filter_by(Attendance.event_id == event_id).all()
 

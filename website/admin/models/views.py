@@ -297,12 +297,14 @@ def upload_event():
         # Insert all the students in that department and level
         selected_students = get_selected_students(department, level)
 
+        print("selected_students: ", selected_students)
+
         for student in selected_students:
             add_student_to_event = Attendance(
                     event_id=new_event.event_bind_id,
                     student_bind_id=student.student_bind_id
             )
-            db.session.add(new_venue)
+            db.session.add(add_student_to_event)
 
         db.session.commit()
 

@@ -53,9 +53,9 @@ class StudentInfo(db.Model):
     dob = db.Column(db.Date)
     gender = db.Column(
         db.Enum("Male", "Female"))
-    phone_number = db.Column(db.String(15), unique=True)
+    phone_number = db.Column(db.String(15))
     marticno = db.Column(db.String(15), unique=True)
-    dept = db.Column(db.String(30), unique=True)
+    dept = db.Column(db.String(30))
     level = db.Column(db.Integer)
     photo_url = db.Column(db.String(150))
     state = db.Column(db.String(50))

@@ -25,7 +25,7 @@ def logout():
     """This function handles the logout process for all user roles."""
 
     # Create a response for the logout process
-    response = make_response(redirect(url_for('adminAuth.adminLogin', userRole=userRole)))
+    response = make_response(redirect(url_for('adminAuth.adminLogin')))
 
     # Remove the auth_token cookie
     response.set_cookie('auth_token', '', expires=0, httponly=True, secure=False)

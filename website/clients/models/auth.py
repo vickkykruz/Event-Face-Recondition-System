@@ -16,7 +16,10 @@ from website.clients.models.utils import (
         send_alert_email,
         get_user_data,
         get_user_uid_from_token,
-        get_location_from_ip)
+        get_location_from_ip,
+        generate_auth_token,
+        get_user_by_email_firebase,
+        get_user_info_data)
 import json
 import re
 import secrets
@@ -30,9 +33,15 @@ from os import path, environ, getenv
 from datetime import datetime, timedelta, timezone, time
 import os
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+import firebase_admin
 
+
+# Load environment variables once at startup
+load_dotenv()
 
 IPINFO_API_TOKEN = environ.get('IPINFO_API_TOKEN')
+
 
 # Define the BluePrint
 auth = Blueprint(
@@ -121,38 +130,48 @@ def clientLogin(userRole):
                 flash("Your email is not verified. Please verify your email.", "danger")
                 return redirect(url_for('auth.resend_verification', userRole=userRole))
 
+            student_blind_uid = user_data.student_bind_id
+
+            if userRole == "students":
+                userRole_info = "student_info"
+
+            student_bind_id = user_data.student_bind_id
+
+            # Retrieve user information
+            user_info = get_user_info_data(student_bind_id, userRole_info)
+
             # Get location from IP
-            #user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+            user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
 
-            #if user_ip and ',' in user_ip:
-            #    user_ip = user_ip.split(',')[0].strip()
+            if user_ip and ',' in user_ip:
+                user_ip = user_ip.split(',')[0].strip()
 
-            #match = re.search(r'::ffff:(\d+\.\d+\.\d+\.\d+)', user_ip)
-            #if match:
-            #    user_ip = match.group(1)
+            match = re.search(r'::ffff:(\d+\.\d+\.\d+\.\d+)', user_ip)
+            if match:
+                user_ip = match.group(1)
 
-            #print('UserIP Address: ', user_ip)
+            print('UserIP Address: ', user_ip)
 
-            #user_location = get_location_from_ip(user_ip, IPINFO_API_TOKEN)
+            user_location = get_location_from_ip(user_ip, IPINFO_API_TOKEN)
 
-            #if not user_location:
-            #    flash("An error occured. Please try again later.", "danger")
-            #    print('An error occureds. Please try again later.')
-            #    return redirect(url_for('auth.clientLogin', userRole=userRole))
+            if not user_location:
+                flash("An error occured. Please try again later.", "danger")
+                print('An error occureds. Please try again later.')
+                return redirect(url_for('auth.clientLogin', userRole=userRole))
 
-            #current_latitude = user_location['latitude']
-            #current_longitude = user_location['longitude']
-            #previous_latitude = previous_latitude = getattr(user_data, "previous_latitude", None) or "None"
-            #previous_longitude = getattr(user_data, "previous_longitude", None) or "None"
+            current_latitude = user_location['latitude']
+            current_longitude = user_location['longitude']
+            previous_latitude = previous_latitude = getattr(user_data, "previous_latitude", None) or "None"
+            previous_longitude = getattr(user_data, "previous_longitude", None) or "None"
 
             # Get the current time and the previous 'last_logged_in' and user,s location
             current_time = datetime.utcnow()  # Current time in UTC
             previous_last_logged_in = getattr(user_data, "last_logged_in", None) or "None"
 
-            #user_data.current_latitude = current_latitude
-            #user_data.current_longitude = current_longitude
-            #user_data.previous_latitude = previous_latitude
-            #user_data.previous_longitude = previous_longitude
+            user_data.current_latitude = current_latitude
+            user_data.current_longitude = current_longitude
+            user_data.previous_latitude = previous_latitude
+            user_data.previous_longitude = previous_longitude
             user_data.last_logged_in = current_time
             user_data.previous_last_logged_in = previous_last_logged_in
 
@@ -161,8 +180,11 @@ def clientLogin(userRole):
 
 
             # Store session token in cookies
-            if userRole == "students":
-                response = make_response(redirect(url_for('views.clientDashboard', userRole=userRole)))
+            if user_info:
+                response = make_response(redirect(url_for('views.clientDashboard', userRole=userRole, user_uid=user_uid)))
+            else:
+                response = make_response(redirect(url_for('auth.submit_information', userRole=userRole, user_uid=user_uid)))
+
             response.set_cookie('auth_token', auth_token, httponly=True, secure=False, max_age=3600)
 
             flash('You are welcome', 'success')
@@ -286,10 +308,9 @@ def clientRegister(userRole):
     return render_template("auth.html", title=title, form=form, userRole=userRole, viewType=viewType)
 
 
-
-@auth.route("/<userRole>/email_verification/<user_uid>/<token>", methods=["GET", "POST"])
-def verify_email(userRole, user_uid, token):
-    """ This is a function that handle email verification """
+@auth.route("/<userRole>/submit_information/<user_uid>", methods=["GET","POST"])
+def submit_information(userRole, user_uid):
+    """ This is route function that process and store the user information """
 
     # Define the valid user roles
     valid_roles = ['students']
@@ -301,7 +322,7 @@ def verify_email(userRole, user_uid, token):
 
 
     title = f"SACOETEC PROPERTY | {userRole.upper()} | Email Vertification"
-    viewType = "EmailVerification"
+    viewType = f"{userRole}_information"
     form = EmailVerificationForm()
 
     if request.method == 'POST':
@@ -328,49 +349,6 @@ def verify_email(userRole, user_uid, token):
                 flash('Error: Failed to get client data', "danger")
                 return redirect(url_for('auth.clientLogin', userRole=userRole))
 
-            # Look for the token and the uid representing that document in the Firestore database
-            email_verf_key = f'email_{user_uid}'
-            email_verify_record = EmailVerification.query.filter_by(email_key=email_verf_key).first()
-
-            # Check if the token matches the one in the URL
-            if email_verify_record and email_verify_record.token != token:
-                raise FirebaseError("auth/invalid-token", "Invalid verification token. Please login.")
-
-            # Convert the 'expiresAt' string to a datetime object
-            expires_at = email_verify_record.expiresAt
-
-            # Check if the token has expired
-            if expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
-                flash("Verification token has expired. Please login again.", "danger")
-                return redirect(url_for("auth.resend_verification", userRole=userRole))
-
-            # Get location from IP
-            user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-
-            if user_ip and ',' in user_ip:
-                user_ip = user_ip.split(',')[0].strip()
-
-            match = re.search(r'::ffff:(\d+\.\d+\.\d+\.\d+)', user_ip)
-            if match:
-                user_ip = match.group(1)
-
-            print('UserIP Address: ', user_ip)
-
-            user_location = get_location_from_ip(user_ip, IPINFO_API_TOKEN)
-
-            if not user_location:
-                flash("An error occured. Please try again later.", "danger")
-                print('An error occureds. Please try again later.')
-                return redirect(url_for('auth.clientLogin', userRole=userRole))
-
-            current_latitude = user_location['latitude']
-            current_longitude = user_location['longitude']
-            previous_latitude = previous_latitude = getattr(user_data, "previous_latitude", None) or "None"
-            previous_longitude = getattr(user_data, "previous_longitude", None) or "None"
-
-            # Get the current time and the previous 'last_logged_in' and user,s location
-            current_time = datetime.utcnow()  # Current time in UTC
-            previous_last_logged_in = getattr(user_data, "last_logged_in", None) or "None"
             student_bind_id = getattr(user_data, "student_bind_id", None) or "None"
             dob_date = datetime.strptime(dob, "%Y-%m-%d").date()
 
@@ -393,38 +371,118 @@ def verify_email(userRole, user_uid, token):
 
             db.session.add(student_info)
 
-            # Update the email_verify status to verify
-            user_data.email_verify = "Verfied"
-            user_data.current_latitude = current_latitude
-            user_data.current_longitude = current_longitude
-            user_data.previous_latitude = previous_latitude
-            user_data.previous_longitude = previous_longitude
-            user_data.last_logged_in = current_time
-            user_data.previous_last_logged_in = previous_last_logged_in
-
-            # Delete the email verify token
-            db.session.delete(email_verify_record)
-
             # Commit the changes
             db.session.commit()
 
-            # Inform the user that the verification was successful
-            flash("Your email address has been successfully verified!", "success")
-
             if userRole == "students":
                 return redirect(url_for("auth.clientFaceScan", userRole=userRole, user_uid=user_uid))
-            else:
-                pass
+
         except (firebase_auth.InvalidIdTokenError, FirebaseError, Exception, ValueError) as e:
             db.session.rollback()
 
             error_message = handle_error_msg(e)
             flash(error_message, "danger")
             return redirect(url_for("auth.clientLogin", userRole=userRole))
-
     return render_template("auth.html", title=title, form=form, viewType=viewType)
 
 
+@auth.route("/<userRole>/email_verification/<user_uid>/<token>", methods=["GET"])
+def verify_email(userRole, user_uid, token):
+    """ This is a function that handle email verification """
+
+    # Define the valid user roles
+    valid_roles = ['students']
+
+    # Check if the provided userRole is valid
+    if userRole not in valid_roles:
+        # Redirect to a 404 page if userRole is invalid
+        return render_template("404.html"), 404
+
+
+    title = f"SACOETEC PROPERTY | {userRole.upper()} | Email Vertification"
+    viewType = "EmailVerification"
+
+    try:
+        if not user_uid:
+            raise ValueError("Unable to fetch user id")
+
+        user_data = get_user_data(user_uid, userRole)
+
+        if not user_data:
+            flash('Error: Failed to get client data', "danger")
+            return redirect(url_for('auth.clientLogin', userRole=userRole))
+
+        # Look for the token and the uid representing that document in the Firestore database
+        email_verf_key = f'email_{user_uid}'
+        email_verify_record = EmailVerification.query.filter_by(email_key=email_verf_key).first()
+
+        # Check if the token matches the one in the URL
+        if email_verify_record and email_verify_record.token != token:
+            raise FirebaseError("auth/invalid-token", "Invalid verification token. Please login.")
+
+        # Convert the 'expiresAt' string to a datetime object
+        expires_at = email_verify_record.expiresAt
+
+        # Check if the token has expired
+        if expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            flash("Verification token has expired. Please login again.", "danger")
+            return redirect(url_for("auth.resend_verification", userRole=userRole))
+
+        # Get location from IP
+        user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+
+        if user_ip and ',' in user_ip:
+            user_ip = user_ip.split(',')[0].strip()
+
+        match = re.search(r'::ffff:(\d+\.\d+\.\d+\.\d+)', user_ip)
+        if match:
+            user_ip = match.group(1)
+
+        print('UserIP Address: ', user_ip)
+
+        user_location = get_location_from_ip(user_ip, IPINFO_API_TOKEN)
+
+        if not user_location:
+            flash("An error occured. Please try again later.", "danger")
+            print('An error occureds. Please try again later.')
+            return redirect(url_for('auth.clientLogin', userRole=userRole))
+
+        current_latitude = user_location['latitude']
+        current_longitude = user_location['longitude']
+        previous_latitude = previous_latitude = getattr(user_data, "previous_latitude", None) or "None"
+        previous_longitude = getattr(user_data, "previous_longitude", None) or "None"
+
+        # Get the current time and the previous 'last_logged_in' and user,s location
+        current_time = datetime.utcnow()  # Current time in UTC
+        previous_last_logged_in = getattr(user_data, "last_logged_in", None) or "None"
+
+
+        # Update the email_verify status to verify
+        user_data.email_verify = "Verfied"
+        user_data.current_latitude = current_latitude
+        user_data.current_longitude = current_longitude
+        user_data.previous_latitude = previous_latitude
+        user_data.previous_longitude = previous_longitude
+        user_data.last_logged_in = current_time
+        user_data.previous_last_logged_in = previous_last_logged_in
+
+        # Delete the email verify token
+        db.session.delete(email_verify_record)
+
+        # Commit the changes
+        db.session.commit()
+
+        return render_template("auth.html", title=title, viewType=viewType)
+
+    except (firebase_auth.InvalidIdTokenError, FirebaseError, Exception, ValueError) as e:
+        db.session.rollback()
+
+        error_message = handle_error_msg(e)
+        flash(error_message, "danger")
+        return redirect(url_for("auth.resend_verification", userRole=userRole))
+
+
+@auth.route("/<userRole>/face-scan/", defaults={'user_uid': None}, methods=["GET", "POST"])
 @auth.route("/<userRole>/face-scan/<user_uid>", methods=["GET", "POST"])
 def clientFaceScan(userRole, user_uid):
     """ This is a function that handle the face scan of the user """
@@ -440,80 +498,101 @@ def clientFaceScan(userRole, user_uid):
 
     title = f"SACOETEC PROPERTY | {userRole.upper()} | Face Scan"
     viewType = "FaceScan"
-    form = ForgottenPasswordForm()
+
+    return render_template("auth.html", title=title, user_uid=user_uid, viewType=viewType, userRole=userRole)
+
+
+@auth.route("/<userRole>/process-face-scan", methods=["POST"])
+@auth.route("/<userRole>/process-face-scan/<user_uid>", methods=["POST"])
+def processFaceScan(userRole, user_uid=None):
+    """Handle the face scan of the user"""
+    from website.celery.tasks import upload_file_to_firebase_task
+
+    # Define valid user roles
+    valid_roles = ['students']
+
+    # Validate user role
+    if userRole not in valid_roles:
+        return jsonify({"error": "Invalid user role"}), 400
 
     if request.method == "POST":
-        # Handle the POST request
         try:
             data = request.json
-            image_data = data.get("image")
-            if not image_data:
-                return jsonify({"error": "No image received"}), 400
+            image_data = data.get("scanResult")
+            face_scan_key = data.get("faceScanKey")
 
-            #face_image_filename = secure_filename(image_data.filename)
-            face_image_filename = secure_filename(f"{user_uid}.png")
-            #face_image_data = base64.b64encode(image_data.read()).decode('utf-8')
-            #face_image_content_type = image_data.content_type
+            if not image_data or not face_scan_key:
+                return jsonify({"error": "Missing required data"}), 400
+
+            print("image_data: ", image_data)
+            print("face_scan_key: ", face_scan_key)
+
+            face_image_filename = secure_filename(f"{face_scan_key}.png")
             face_image_dir = "Event_Face_Recongition/faces/"
             face_image_path = os.path.join(face_image_dir, face_image_filename)
 
             if not os.path.exists(face_image_dir):
                 os.makedirs(face_image_dir)
 
-            image_data = image_data.split(",")[1]
+            try:
+                if ',' in image_data:
+                    image_data = image_data.split(",")[1]
 
-            # Decode base64 image and save it locally
-            image_bytes = base64.b64decode(image_data)
+                image_bytes = base64.b64decode(image_data)
+            except Exception as e:
+                return jsonify({"error": "Invalid Base64 image data", "details": str(e)}), 400
+
             with open(face_image_path, "wb") as img_file:
                 img_file.write(image_bytes)
-
 
             # Process image with face_recognition
             image = face_recognition.load_image_file(face_image_path)
             face_encodings = face_recognition.face_encodings(image)
 
-            if len(face_encodings) > 0:
-                # Save face encoding to the database
-                student_data = get_user_data(user_uid, userRole)
-                student_bind_id = student_data.student_bind_id
-                student_data.face_encoding = json.dumps(face_encodings[0].tolist())  # Convert to list
-                db.session.commit()
+            if not face_encodings:
+                os.remove(face_image_path)
+                return jsonify({"error": "No face detected in the image"}), 400
 
-                # Call Celery task to upload profile picture
-                upload_file_to_firebase_task.delay(
-                        file_data=base64.b64encode(image_bytes).decode('utf-8'),
-                        file_key="photo_url",  # Column in the model where the URL will be stored
-                        content_type="image/png",
-                        file_path=face_image_path,
-                        task_role="student_info",  # Role of the task (e.g., landlords, tenants)
-                        task_key=student_bind_id  # Key to identify the row in the model (e.g., email or user ID)
-                )
+            #if len(face_encodings) > 0:
+            # Save face encoding to the database
+            student_data = get_user_data(face_scan_key, userRole)
 
-                # 🗑️ Delete the local file after processing
-                if os.path.exists(face_image_path):
-                    os.remove(face_image_path)
+            if not student_data:
+                os.remove(face_image_path)
+                return jsonify({"error": "User not found"}), 404
 
-                return jsonify({"success": True, "message": "Face registered successfully!"})
-            else:
+            student_bind_id = student_data.student_bind_id
+            student_data.face_encoding = json.dumps(face_encodings[0].tolist())
+            db.session.commit()
 
-                # 🗑️ Delete the local file after processing
-                if os.path.exists(face_image_path):
-                    os.remove(face_image_path)
+            # Upload profile picture using Celery
+            upload_file_to_firebase_task.delay(
+                file_data=base64.b64encode(image_bytes).decode('utf-8'),
+                file_key="photo_url",
+                content_type="image/png",
+                file_path=face_image_path,
+                task_role="student_info",
+                task_key=student_bind_id
+            )
 
-                return jsonify({"error": "No face detected. Try again."}), 400
-
-
-        except Exception as e:
-            print("Error processing image:", e)
-
-            # 🗑️ Delete the local file after processing
+            # 🗑️  Delete the local file after processing
             if os.path.exists(face_image_path):
                 os.remove(face_image_path)
 
-            return jsonify({"error": "Error processing image"}), 500
+            return jsonify({
+                "success": True,
+                "message": "Face registered successfully!",
+                "redirect_url": f"https://c681-102-89-33-110.ngrok-free.app/students/dashboard/{face_scan_key}"})
 
+            #else:
+                # 🗑️  Delete the local file after processing
+            #    if os.path.exists(face_image_path):
+            #        os.remove(face_image_path)
+            #    return jsonify({"error": "No face detected. Try again."}), 400
 
-    return render_template("auth.html", title=title, form=form, user_uid=user_uid, viewType=viewType, userRole=userRole)
+        except Exception as e:
+            print("Error processing image:", str(e))
+            return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 
 @auth.route("/<userRole>/forgot-password", methods=['GET', 'POST'])
@@ -538,7 +617,8 @@ def clientForgotPassword(userRole):
         email = request.form.get('email')
 
         # Generate a new verification token
-        user_record = firebase_auth.get_user_by_email(email)
+        #user_record = firebase_auth.get_user_by_email(email)
+        user_record = get_user_by_email_firebase(email)
         if not user_record:
             flash("User not found. Please register again", "danger")
             return redirect(url_for('auth.clientForgotPassword', userRole=userRole))
@@ -697,6 +777,8 @@ def resend_verification(userRole):
     viewType = "resend-verification"
     form = ResendEmailVerificationForm()
 
+    firebase_app = firebase_admin.get_app("telemedical")
+
     # and form.validate_on_submit()
 
     if request.method == 'POST':
@@ -707,7 +789,8 @@ def resend_verification(userRole):
 
             # Generate a new verification token
             try:
-                user_record = firebase_auth.get_user_by_email(email)
+                #user_record = firebase_auth.get_user_by_email(email)
+                user_record = get_user_by_email_firebase(email)
                 user_uid = user_record.uid
             except firebase_auth.UserNotFoundError:
                 flash("User not found. Please register again", "danger")
@@ -759,7 +842,8 @@ def resend_verification(userRole):
             send_alert_email(template_title, name, message, action, link, email)
 
             # Using a secure random token for the session
-            auth_token = firebase_auth.create_custom_token(user_uid).decode('utf-8')
+            #auth_token = firebase_auth.create_custom_token(user_uid).decode('utf-8')
+            auth_token = generate_auth_token(user_uid)
 
             # Store session token in cookies
             response = make_response(redirect(url_for('auth.resend_verification', userRole=userRole)))

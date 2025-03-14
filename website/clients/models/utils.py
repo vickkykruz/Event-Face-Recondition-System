@@ -4,13 +4,15 @@ from dotenv import load_dotenv
 from os import path, environ, getenv
 import requests
 from website.clients.models.models import Students, StudentInfo
-from website.admin.models.models import Events, Venues
+from website.admin.models.models import Events, Venues, Attendance
 from flask import request, redirect, flash, url_for, make_response, current_app, session, make_response
-from firebase_admin import auth as firebase_auth, storage, firestore
+from firebase_admin import auth as firebase_auth, storage, firestore, credentials
 import base64
 import random
 import os
 from website import db
+from datetime import datetime, timedelta
+import firebase_admin
 
 
 # Load environment variables once at startup
@@ -22,11 +24,62 @@ EVENT_FACE_RECONGITION_CLIENT_ID = environ.get('EVENT_FACE_RECONGITION_CLIENT_ID
 # Global variable to hold current time
 current_time = None
 
-# Use 'event-face' Firebase app for authentication
-#event_auth = firebase_auth.client(app=event_app)
 
-# Use 'telemedical' Firebase app for authentication
-#telemedical_auth = firebase_auth.client(app=telemedical_app)
+EVENT_FACE_RECONGITION_FIREBASE_CREDENTIALS = environ.get('EVENT_FACE_RECONGITION_FIREBASE_KEY_PATH')
+TELEMEDICAL_FIREBASE_CREDENTIALS = environ.get('TELEMEDICAL_FIREBASE_KEY_PATH')
+
+
+# Global dictionary to store Firebase apps
+firebase_apps = {}
+
+def get_firebase_app():
+    """Ensure Firebase is initialized only once and return Firebase app instances."""
+
+    global firebase_apps
+
+    if not firebase_apps:  # Initialize only if not already initialized
+        if not EVENT_FACE_RECONGITION_FIREBASE_CREDENTIALS or not TELEMEDICAL_FIREBASE_CREDENTIALS:
+            raise ValueError("Firebase credentials are missing. Check environment variables.")
+
+        event_face_recognition_cred = credentials.Certificate(EVENT_FACE_RECONGITION_FIREBASE_CREDENTIALS)
+        telemedical_cred = credentials.Certificate(TELEMEDICAL_FIREBASE_CREDENTIALS)
+
+        firebase_apps["event-face-recogn"] = firebase_admin.initialize_app(event_face_recognition_cred, name="event-face-recogn")
+        firebase_apps["telemedical"] = firebase_admin.initialize_app(telemedical_cred, {
+            'storageBucket': 'telemedical-710dc.appspot.com'
+        }, name="telemedical-firebase")
+
+    return firebase_apps
+
+
+def get_user_by_email_firebase(email, app_name="event-face-recogn"):
+    """Retrieve a user record from Firebase Authentication using their email."""
+
+    firebase_apps = get_firebase_app()
+
+    if app_name not in firebase_apps:
+        raise ValueError(f"Invalid Firebase app name: {app_name}")
+
+    try:
+        user_record = firebase_auth.get_user_by_email(email, app=firebase_apps[app_name])
+        return user_record
+    except firebase_admin.auth.UserNotFoundError:
+        return None  # User does not exist
+    except Exception as e:
+        raise RuntimeError(f"Error retrieving user: {str(e)}")
+
+
+def generate_auth_token(user_uid, app_name="event-face-recogn"):
+    """Generate a secure Firebase authentication token for a user."""
+
+    firebase_apps = get_firebase_app()
+
+    if app_name not in firebase_apps:
+        raise ValueError(f"Invalid Firebase app name: {app_name}")
+
+    auth_token = firebase_auth.create_custom_token(user_uid, app=firebase_apps[app_name]).decode('utf-8')
+
+    return auth_token
 
 def handle_error_msg(e):
     """ This is function that handle the display of error msg """
@@ -682,6 +735,35 @@ def get_user_data(user_uid, userRole):
         print(f"Error fetching user data: {e}")
         return None
 
+def get_all_users(userRole):
+    """ This is a function that get all the users """
+
+    if userRole == "students":
+        return Students.query.order_by(Students.id.desc()).all()
+
+
+
+def get_student_records(student_blind_uid, event_blind_id, table):
+    """ This is a function that get the student event records """
+
+    if not student_blind_uid or not event_blind_id or not table:
+        return None
+
+    try:
+        student_event_data = None
+
+        # Fetch data based on user role
+        if table == "attendance":
+            student_event_data = Attendance.query.filter_by(event_id=event_blind_id, student_bind_id=student_blind_uid).first()
+
+        if student_event_data:
+            return student_event_data
+
+        return None
+    except Exception as e:
+        print(f"Error fetching user data: {e}")
+        return None
+
 
 def get_location_from_ip(ip_address, token):
     """ Get the user's location uses the ip address """
@@ -846,3 +928,75 @@ def get_lastest_event(department, level):
     ).limit(3).all()
 
     return upcoming_events
+
+def event_schedular():
+    """ This is a function that handle the event schedular functionalities """
+
+    # Get the current timestamp
+    now = datetime.now()
+
+    # Fetch all pending events
+    pending_events = Events.query.filter_by(event_status="pending").all()
+
+    for event in pending_events:
+        event_datetime = datetime.combine(event.event_date, event.event_time)
+
+        # Calculate time differences
+        one_day_before = event_datetime - timedelta(days=1)
+        thirty_minutes_before = event_datetime - timedelta(minutes=30)
+
+        # Fetch all students with pending attendance for this event
+        pending_attendances = Attendance.query.filter_by(event_id=event.event_bind_id, status="pending").all()
+        student_ids = [att.student_bind_id for att in pending_attendances]
+
+        students = Students.query.filter(Students.student_bind_id.in_(student_ids)).all()
+
+        # Send email reminder if event is a day before
+        if now >= one_day_before and now < thirty_minutes_before:
+            send_email_reminder(event, students, "Event Reminder: Happening Tomorrow")
+
+        # Send final reminder & update event_status if event is 30 minutes away
+        if now >= thirty_minutes_before and now < event_datetime:
+            send_email_reminder(event, students, "Event Reminder: Starting Soon")
+            event.event_status = "started"
+            db.session.commit()
+
+        # If event time has passed, update status and mark absentees
+        if now >= event_datetime:
+            event.event_status = "done"
+            db.session.commit()
+
+            # Mark students with pending attendance as "absent"
+            for attendance in pending_attendances:
+                attendance.status = "absent"
+
+            db.session.commit()
+
+    print("Event scheduler executed successfully.")
+
+
+def send_email_reminder(event, students, subject):
+    """Helper function to send email reminders to students."""
+
+    link = url_for('views.clientDashboard', userRole="students", _external=True)
+
+    action = "View event details"
+
+    for student in students:
+        name = student.name
+        email = student.email
+
+        # Format the message inside the loop
+        message = (
+            f"Hello {name},\n\n"
+            f"This is a reminder for the event '{event.event_title}'.\n\n"
+            f"📍 Venue: {event.venue_id}\n"
+            f"📅 Date: {event.event_date}\n"
+            f"⏰ Time: {event.event_time}\n\n"
+            "Please make sure to attend.\n\nBest Regards,\nEvent Management Team"
+        )
+
+        send_alert_email(subject, name, message, action, link, email)
+
+    print(f"Reminder sent to {len(students)} students for event '{event.event_title}'.")
+
