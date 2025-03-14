@@ -12,7 +12,8 @@ from website.admin.models.utils import (
         get_event_attendance)
 from website.clients.models.utils import (
         get_user_uid_from_token,
-        delete_cookies_and_redirect)
+        delete_cookies_and_redirect,
+        get_student_data_by_bind_id)
 from website import db
 import os
 from datetime import datetime, timedelta, timezone, time
@@ -389,12 +390,23 @@ def attendance_sheet(event_id):
 
     # Fetch all the venues
     event_attendance = get_event_attendance(event_id)
+    student_attendance = []
 
+    print("event_attendance", event_attendance)
+
+    for attendance in event_attendance:
+        student_data = get_student_data_by_bind_id(attendance.student_bind_id, "students")
+
+        if student_data:
+            student_attendance.append((student_data, attendance))
+
+    print("student_attendance", student_attendance)
+        
     return render_template(
             "dashboard/blank.html",
             title=title,
             user_data=user_data,
-            event_attendance=event_attendance,
+            student_attendance=student_attendance,
             viewType=viewType,
             user_info=user_info)
     

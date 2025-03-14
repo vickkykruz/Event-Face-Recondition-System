@@ -56,10 +56,17 @@ def get_selected_students(department, level):
         StudentInfo.level == level
     ).order_by(Students.id.desc()).all()
 
+#def get_event_attendance(event_id):
+#    """ This is a function that fetch all the students who is meant to attend this event """
+
+#    return Attendance.query.join(
+#            Students, Students.student_bind_id == Attendance.student_bind_id
+#    ).filter_by(Attendance.event_id == event_id).all()
+
 def get_event_attendance(event_id):
-    """ This is a function that fetch all the students who is meant to attend this event """
+    """This function fetches all the students who are meant to attend this event."""
 
     return Attendance.query.join(
-            Students, Students.student_bind_id = Attendance.student_bind_id
-    ).filter_by(Attendance.event_id == event_id).all()
+        Students, Students.student_bind_id == Attendance.student_bind_id
+    ).filter(Attendance.event_id == event_id).all()
 

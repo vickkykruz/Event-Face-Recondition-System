@@ -786,8 +786,9 @@
    {% endif %}
     <script>
 
-    const userRole = "{{ userRole }}";
-    const event_bind_id = "{{ venue_bind_id }}";
+    const userRole = "{{ userRole }}" || "defaultRole";
+    const event_bind_id = "{{ venue_bind_id }}" || "defaultId";
+    const user_info = "{{ user_info }}" || "Guest";
 
     let map, marker;
     const venueForm = document.getElementById("venueForm");
@@ -804,10 +805,19 @@
 
     // Extract destination coordinates
     const destinationElement = document.getElementById("destination");
-      const destinationCoords = {
-        lat: parseFloat(destinationElement.getAttribute("data-latitude")),
-        lng: parseFloat(destinationElement.getAttribute("data-longitude"))
-      };
+    const destinationCoords = destinationElement
+      ? {
+          lat: parseFloat(destinationElement.getAttribute("data-latitude") || "0"),
+          lng: parseFloat(destinationElement.getAttribute("data-longitude") || "0")
+        }
+      : { lat: 0, lng: 0 };
+    console.log("📍 Extracted Destination Coordinates:", destinationCoords);
+
+
+    //const destinationCoords = {
+    //  lat: parseFloat(destinationElement.getAttribute("data-latitude")),
+    //  lng: parseFloat(destinationElement.getAttribute("data-longitude"))
+    //};
    
 
     function initMap() {
@@ -849,36 +859,81 @@
             if (destinationElement) {
               // Calculate and display remaining distance
               let distance = calculateDistance(coords, destinationCoords);
-              directionText.innerText = `${distance.toFixed(2)} meters left`;
+              if (directionText) {
+                directionText.innerText = `${distance.toFixed(2)} meters left`;
+              }
 
               // Redirect if within 10 meters
               //if (distance <= 10) {
               //  window.location.href = `https://c681-102-89-33-110.ngrok-free.app/students/attendance-scan`; // Change URL as needed
               //}
-              if (distance <= 13000000) { // Set this to be greater than the calculated distance
-                 console.log("✅ Redirecting... Distance:", distance);
-                 window.location.href = `https://c681-102-89-33-110.ngrok-free.app/${userRole}/attendance-scan/${event_bind_id}`;
-              } else {
-                 console.log("❌ Not redirecting. Distance:", distance);
+              if (user_info != "Admin") {
+                if (distance <= 13000000) { // Set this to be greater than the calculated distance
+                   console.log("✅ Redirecting... Distance:", distance);
+                   window.location.href = `https://c681-102-89-33-110.ngrok-free.app/${userRole}/attendance-scan/${event_bind_id}`;
+                } else {
+                   console.log("❌ Not redirecting. Distance:", distance);
+                }
               }
             }
         }
 
-        // Watch for user's real-time location
-        window.updateUserLocation = function(lat, lng) {
-          console.log("📍 Location Updated from Flutter: ", lat, lng);
+        if (user_info == "Admin") {
+          if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+                function (position) {
 
-          const userLocation = { lat: lat, lng: lng };
+                    let userLocation;
 
-          // ✅ Update the map marker
-          if (marker) marker.setGeometry(userLocation);
+                    if (destinationCoords.lat !== 0 && destinationCoords.lng !== 0) { 
+                      userLocation = {
+                          lat: destinationCoords.lat,
+                          lng: destinationCoords.lng
+                      };
+                    } else {
+                      userLocation = {
+                          lat: position.coords.latitude,
+                          lng: position.coords.longitude
+                      };
+                    }
 
-          // ✅ Smoothly pan the map to the new location
-          if (map) map.setCenter(userLocation);
+                    // Move the marker to the new location
+                    marker.setGeometry(userLocation);
 
-          // ✅ Update displayed latitude and longitude
-          updateLatLng(userLocation);
-        };
+                    // Smoothly pan the map to the new location
+                    map.setCenter(userLocation);
+
+                    // Update the displayed latitude and longitude
+                    updateLatLng(userLocation);
+                },
+                function () {
+                    showAlert("Real-time location tracking failed. Using default location.");
+                    //alert("Real-time location tracking failed. Using default location.");
+                },
+                {
+                    enableHighAccuracy: true, // Use GPS for better accuracy
+                    maximumAge: 0, // Don't use cached positions
+                    timeout: 10000 // Maximum time to wait for location update
+                }
+            );
+          }
+        } else {
+          // Watch for user's real-time location
+          window.updateUserLocation = function(lat, lng) {
+            console.log("📍 Location Updated from Flutter: ", lat, lng);
+
+            const userLocation = { lat: lat, lng: lng };
+
+            // ✅ Update the map marker
+            if (marker) marker.setGeometry(userLocation);
+
+            // ✅ Smoothly pan the map to the new location
+            if (map) map.setCenter(userLocation);
+
+            // ✅ Update displayed latitude and longitude
+            updateLatLng(userLocation);
+          };
+        }
 
         // Update the initial position
         updateLatLng(defaultLocation);

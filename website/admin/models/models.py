@@ -105,3 +105,6 @@ class Attendance(db.Model):
     )
     status = db.Column(
             db.Enum("pending", "present", "absent"), default="pending")
+
+    reminder_1_day_sent = db.Column(db.Boolean, default=False, nullable=False)
+    reminder_1_hour_sent = db.Column(db.Boolean, default=False, nullable=False)

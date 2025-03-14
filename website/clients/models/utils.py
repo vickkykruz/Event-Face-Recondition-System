@@ -735,6 +735,30 @@ def get_user_data(user_uid, userRole):
         print(f"Error fetching user data: {e}")
         return None
 
+
+def get_student_data_by_bind_id(bind_id, userRole):
+    """ This is a function that get the user data based on their bind id """
+
+    if not bind_id or not userRole:
+        return None  # Return None if either user_uid or userRole is missing
+
+    try:
+        user_data = None  # Initialize variable to avoid undefined reference
+
+        # Fetch data based on user role
+        if userRole == "students":
+            user_data = Students.query.filter_by(student_bind_id=bind_id).first()
+
+        if user_data:
+            return user_data
+        else:
+            print(f"User data not found in DB for UID: {bind_id}, Role: {userRole}")
+            return None
+
+    except Exception as e:
+        print(f"Error fetching user data: {e}")
+        return None
+
 def get_all_users(userRole):
     """ This is a function that get all the users """
 
@@ -929,11 +953,12 @@ def get_lastest_event(department, level):
 
     return upcoming_events
 
-def event_schedular():
-    """ This is a function that handle the event schedular functionalities """
 
-    # Get the current timestamp
+def event_schedular():
+    """ This function handles the event scheduler functionalities """
+
     now = datetime.now()
+    print(f"\n📅 Running event scheduler at {now}\n")
 
     # Fetch all pending events
     pending_events = Events.query.filter_by(event_status="pending").all()
@@ -941,52 +966,90 @@ def event_schedular():
     for event in pending_events:
         event_datetime = datetime.combine(event.event_date, event.event_time)
 
-        # Calculate time differences
         one_day_before = event_datetime - timedelta(days=1)
-        thirty_minutes_before = event_datetime - timedelta(minutes=30)
+        one_hour_before = event_datetime - timedelta(hours=1)
 
-        # Fetch all students with pending attendance for this event
+        print(f"\n🔎 Checking event: {event.event_title} (ID: {event.event_bind_id})")
+
         pending_attendances = Attendance.query.filter_by(event_id=event.event_bind_id, status="pending").all()
-        student_ids = [att.student_bind_id for att in pending_attendances]
 
-        students = Students.query.filter(Students.student_bind_id.in_(student_ids)).all()
+        for attendance in pending_attendances:
+            student = Students.query.filter_by(student_bind_id=attendance.student_bind_id).first()
 
-        # Send email reminder if event is a day before
-        if now >= one_day_before and now < thirty_minutes_before:
-            send_email_reminder(event, students, "Event Reminder: Happening Tomorrow")
+            if not student:
+                print(f"WARNING: No student found for student_bind_id: {attendance.student_bind_id}")
+                continue  # Skip if student not found
 
-        # Send final reminder & update event_status if event is 30 minutes away
-        if now >= thirty_minutes_before and now < event_datetime:
-            send_email_reminder(event, students, "Event Reminder: Starting Soon")
-            event.event_status = "started"
-            db.session.commit()
+            # Debugging log to check the type
+            print(f"DEBUG: Found student: {student} (Type: {type(student)})")
+
+            if not isinstance(student, Students):  # Ensure student is an instance of the Students model
+                print(f"⚠️ WARNING: No student found for student_bind_id: {attendance.student_bind_id}")
+                continue
+
+            print(f"✅ Found student: {student.name} (ID: {student.student_bind_id})")
+
+            # Send **one day before**
+            if now >= one_day_before and now < one_hour_before and not attendance.reminder_1_day_sent:
+                print(f"📧 Sending 1-day reminder to {student.name}")
+                send_email_reminder(event, student, "Event Reminder: Happening Tomorrow")
+
+                attendance.reminder_1_day_sent = True
+                print(f"✅ Updated reminder_status (1-day): {attendance.reminder_1_day_sent}")
+
+                db.session.commit()
+                print(f"💾 Database committed for 1-day reminder.")
+
+            # Send **one hour before**
+            if now >= one_hour_before and now < event_datetime and not attendance.reminder_1_hour_sent:
+                print(f"📧 Sending 1-hour reminder to {student.name}")
+                send_email_reminder(event, student, "Event Reminder: Starting Soon")
+                event.event_status = "started"
+
+
+                attendance.reminder_1_hour_sent = True
+                print(f"✅ Updated reminder_status (1-hour): {attendance.reminder_1_hour_sent}")
+
+                db.session.commit()
+                print(f"💾 Database committed for 1-hour reminder.")
 
         # If event time has passed, update status and mark absentees
         if now >= event_datetime:
+            print(f"⏳ Event '{event.event_title}' time has passed. Updating status...")
+
             event.event_status = "done"
             db.session.commit()
+            print(f"✅ Event status updated to 'done'.")
 
-            # Mark students with pending attendance as "absent"
             for attendance in pending_attendances:
                 attendance.status = "absent"
+                db.session.commit()
+                print(f"🚨 Student {attendance.student_bind_id} marked as absent.")
 
-            db.session.commit()
-
-    print("Event scheduler executed successfully.")
+    print("✅ Event scheduler executed successfully.")
 
 
 def send_email_reminder(event, students, subject):
     """Helper function to send email reminders to students."""
 
-    link = url_for('views.clientDashboard', userRole="students", _external=True)
+    # Ensure `students` is always a list
+    if isinstance(students, Students):  # If a single student object is passed
+        students = [students]  # Convert it into a list
+    elif not isinstance(students, list):  # If it's neither a list nor a student
+        print(f"ERROR: Invalid students object passed: {students} (Type: {type(students)})")
+        return  # Exit function to avoid errors
 
+    link = url_for('views.clientDashboard', userRole="students", _external=True)
     action = "View event details"
 
     for student in students:
+        if not isinstance(student, Students):  # Ensure every item is a `Students` object
+            print(f"WARNING: Skipping invalid student object: {student}")
+            continue
+
         name = student.name
         email = student.email
 
-        # Format the message inside the loop
         message = (
             f"Hello {name},\n\n"
             f"This is a reminder for the event '{event.event_title}'.\n\n"
@@ -998,5 +1061,7 @@ def send_email_reminder(event, students, subject):
 
         send_alert_email(subject, name, message, action, link, email)
 
-    print(f"Reminder sent to {len(students)} students for event '{event.event_title}'.")
+    print(f"📩 Reminder sent to {len(students)} student(s) for event '{event.event_title}'.")
+
+
 
