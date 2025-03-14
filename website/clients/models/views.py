@@ -480,7 +480,7 @@ def recognize_face(userRole, event_bind_id=None):
             os.remove(temp_image_path)  # Delete temp file if no face detected
             return jsonify({
                 "error": "No face detected. Try again.",
-                "redirect_url": f"https://c681-102-89-33-110.ngrok-free.app/students/sucessfull-verification"}), 400
+                "redirect_url": f"https://20b9-197-211-59-55.ngrok-free.app/students/sucessfull-verification"}), 400
 
         scanned_encoding = scanned_encodings[0]  # Get first detected face
 
@@ -509,6 +509,7 @@ def recognize_face(userRole, event_bind_id=None):
                 # Mark the user attendance
                 student_blind_id = user_data.student_bind_id
                 print("student_blind_id", student_blind_id)
+                print("event_bind_id", event_bind_id)
 
                 mark_attendence = get_student_records(student_blind_id, event_bind_id, "attendance")
                 print("mark_attendence", mark_attendence)
@@ -522,7 +523,7 @@ def recognize_face(userRole, event_bind_id=None):
                     "success": True,
                     "message": "Face Recognized! Redirecting...",
                     "user_id": student_uid,
-                    "redirect_url": f"https://c681-102-89-33-110.ngrok-free.app/students/sucessfull-verification/{student_uid}"
+                    "redirect_url": f"https://20b9-197-211-59-55.ngrok-free.app/students/sucessfull-verification/{student_uid}"
                 })
 
         os.remove(temp_image_path)  # 🗑️ Delete temp file if no match found

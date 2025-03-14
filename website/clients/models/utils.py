@@ -779,6 +779,7 @@ def get_student_records(student_blind_uid, event_blind_id, table):
         # Fetch data based on user role
         if table == "attendance":
             student_event_data = Attendance.query.filter_by(event_id=event_blind_id, student_bind_id=student_blind_uid).first()
+            print("student_event_data", student_event_data)
 
         if student_event_data:
             return student_event_data

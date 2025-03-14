@@ -582,7 +582,7 @@ def processFaceScan(userRole, user_uid=None):
             return jsonify({
                 "success": True,
                 "message": "Face registered successfully!",
-                "redirect_url": f"https://c681-102-89-33-110.ngrok-free.app/students/dashboard/{face_scan_key}"})
+                "redirect_url": f"https://20b9-197-211-59-55.ngrok-free.app/students/dashboard/{face_scan_key}"})
 
             #else:
                 # 🗑️  Delete the local file after processing

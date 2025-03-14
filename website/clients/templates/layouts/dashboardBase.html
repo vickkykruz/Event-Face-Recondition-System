@@ -865,12 +865,12 @@
 
               // Redirect if within 10 meters
               //if (distance <= 10) {
-              //  window.location.href = `https://c681-102-89-33-110.ngrok-free.app/students/attendance-scan`; // Change URL as needed
+              //  window.location.href = `https://20b9-197-211-59-55.ngrok-free.app/students/attendance-scan`; // Change URL as needed
               //}
               if (user_info != "Admin") {
                 if (distance <= 13000000) { // Set this to be greater than the calculated distance
                    console.log("✅ Redirecting... Distance:", distance);
-                   window.location.href = `https://c681-102-89-33-110.ngrok-free.app/${userRole}/attendance-scan/${event_bind_id}`;
+                   window.location.href = `https://20b9-197-211-59-55.ngrok-free.app/${userRole}/attendance-scan/${event_bind_id}`;
                 } else {
                    console.log("❌ Not redirecting. Distance:", distance);
                 }
