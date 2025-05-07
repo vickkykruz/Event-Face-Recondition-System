@@ -126,7 +126,7 @@ def create_app():
     if not app.config.get("IS_CELERY_WORKER", False):
         init_scheduler(app)
 
-    app.config['SERVER_NAME'] = 'c681-102-89-33-110.ngrok-free.app'  # replace with your actual domain or localhost for testing
+    app.config['SERVER_NAME'] = '8ef3-2a00-23a8-c03-1a01-596d-5e0e-577c-c612.ngrok-free.app'  # replace with your actual domain or localhost for testing
     app.config['PREFERRED_URL_SCHEME'] = 'https'
 
     # Register the blueprint

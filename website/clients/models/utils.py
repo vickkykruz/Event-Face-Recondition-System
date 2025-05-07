@@ -188,9 +188,9 @@ def get_firebase_app_from_token(token):
         aud = payload.get("aud")
 
         # Print expected values
-        #print(f"Extracted 'aud': {aud}")
-        #print(f"Expected EVENT_CLIENT_ID: {EVENT_FACE_RECONGITION_CLIENT_ID}")
-        #print(f"Expected TELEMEDICAL_CLIENT_ID: {TELEMEDICAL_CLIENT_ID}")
+        print(f"Extracted 'aud': {aud}")
+        print(f"Expected EVENT_CLIENT_ID: {EVENT_FACE_RECONGITION_CLIENT_ID}")
+        print(f"Expected TELEMEDICAL_CLIENT_ID: {TELEMEDICAL_CLIENT_ID}")
 
         if aud == EVENT_FACE_RECONGITION_CLIENT_ID:  # Replace with actual client ID
             #print("Matched Event App")
