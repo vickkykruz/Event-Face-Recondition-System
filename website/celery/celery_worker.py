@@ -1,4 +1,6 @@
 """ This is module that handle the celery logic """
+#from eventlet import monkey_patch
+#monkey_patch()
 
 from website.celery.celery_config import make_celery
 from os import environ

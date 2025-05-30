@@ -272,7 +272,7 @@ def clientRegister(userRole):
             db.session.add(add_user_session)
             db.session.commit()
 
-
+            print(f"Registration successful! Please check your email to verify your account")
             flash("Registration successful! Please check your email to verify your accoun.", "success")
             if userRole == "students":
                 response = make_response(redirect(url_for('auth.clientRegister', userRole=userRole)))
@@ -582,7 +582,7 @@ def processFaceScan(userRole, user_uid=None):
             return jsonify({
                 "success": True,
                 "message": "Face registered successfully!",
-                "redirect_url": f"https://8ef3-2a00-23a8-c03-1a01-596d-5e0e-577c-c612.ngrok-free.app/students/dashboard/{face_scan_key}"})
+                "redirect_url": f"https://efrs.sacoeteccscdept.com.ng/students/dashboard/{face_scan_key}"})
 
             #else:
                 # 🗑️  Delete the local file after processing

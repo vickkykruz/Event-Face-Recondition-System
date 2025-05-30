@@ -1,7 +1,3 @@
-import eventlet
-
-eventlet.monkey_patch()
-
 import secrets
 import os
 from flask import Flask, render_template, send_from_directory, request
@@ -92,17 +88,6 @@ def create_app():
 
     # Connect to our database
     app.config["SQLALCHEMY_DATABASE_URI"] = f'sqlite:///' + os.path.join(BASE_DIR, DB_NAME)
-    #app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-    #app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
-
-    #if not firebase_admin._apps:
-    #    event_face_recognition_cred = credentials.Certificate(EVENT_FACE_RECONGITION_FIREBASE_CREDENTIALS)
-    #    telemedical_cred = credentials.Certificate(TELEMEDICAL_FIREBASE_CREDENTIALS)
-
-    #    event_app = firebase_admin.initialize_app(event_face_recognition_cred, name="event-face")
-    #    telemedical_app = firebase_admin.initialize_app(telemedical_cred, {
-    #        'storageBucket': 'telemedical-710dc.appspot.com'
-    #    }, name="telemedical")
 
     # Firebase Frontend intilization (Initialize Firebase Pyrebase)
     firebase = pyrebase.initialize_app(firebase_config)
@@ -119,14 +104,31 @@ def create_app():
     db.init_app(app)
     mail.init_app(app)
 
-    socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=120, ping_interval=25, message_queue="redis://localhost:6379/1")
+    async_mode = None
+
+    if not is_celery_worker:
+        try:
+            import gevent
+            async_mode = 'gevent'  # Preferred alternative
+        except ImportError:
+            async_mode = 'threading'
+
+    socketio.init_app(
+        app,
+        cors_allowed_origins="*",
+        async_mode=async_mode,  # Updated line
+        ping_timeout=120,
+        ping_interval=25,
+        message_queue="redis://localhost:6379/1"
+    )
+    #socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet' if not is_celery_worker else None, ping_timeout=120, ping_interval=25, message_queue="redis://localhost:6379/1")
 
     # Initialize APScheduler
     app.config["IS_CELERY_WORKER"] = is_celery_worker
     if not app.config.get("IS_CELERY_WORKER", False):
         init_scheduler(app)
 
-    app.config['SERVER_NAME'] = '8ef3-2a00-23a8-c03-1a01-596d-5e0e-577c-c612.ngrok-free.app'  # replace with your actual domain or localhost for testing
+    app.config['SERVER_NAME'] = 'efrs.sacoeteccscdept.com.ng'  # replace with your actual domain or localhost for testingqerwiuPO
     app.config['PREFERRED_URL_SCHEME'] = 'https'
 
     # Register the blueprint

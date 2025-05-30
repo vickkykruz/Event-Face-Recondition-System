@@ -1,4 +1,6 @@
 """ This module contain the celery configurations """
+#from eventlet import monkey_patch
+#monkey_patch()
 
 from celery import Celery
 from os import environ

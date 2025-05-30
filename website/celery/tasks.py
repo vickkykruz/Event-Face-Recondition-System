@@ -1,4 +1,6 @@
 """ This is a module that handle the background tasks """
+#from eventlet import monkey_patch
+#monkey_patch()
 
 from website.celery.celery_worker import get_celery
 from website.mailer.mail import mail
