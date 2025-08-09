@@ -787,7 +787,7 @@
     <script>
 
     const userRole = "{{ userRole }}" || "defaultRole";
-    const event_bind_id = "{{ venue_bind_id }}" || "defaultId";
+    const event_bind_id = "{{ special_event_id }}" || "defaultId";
     const user_info = "{{ user_info }}" || "Guest";
 
     let map, marker;
@@ -870,7 +870,7 @@
               if (user_info != "Admin") {
                 if (distance <= 13000000) { // Set this to be greater than the calculated distance
                    console.log("✅ Redirecting... Distance:", distance);
-                   window.location.href = `https://20b9-197-211-59-55.ngrok-free.app/${userRole}/attendance-scan/${event_bind_id}`;
+                   window.location.href = `https://efrs.sacoeteccscdept.com.ng/${userRole}/attendance-scan/${event_bind_id}`;
                 } else {
                    console.log("❌ Not redirecting. Distance:", distance);
                 }

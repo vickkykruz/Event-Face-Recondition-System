@@ -204,9 +204,13 @@ def locate_venue(userRole, details=None, venue_bind_id=None):
         cookies_to_delete = ['userRole', 'auth_token']
         return delete_cookies_and_redirect(cookies_to_delete, url_for('auth.clientLogin', userRole=userRole))
 
+    print(f"Details: {details} and event_bind_id: {venue_bind_id}")
+    spacial_event_id = None
 
-    if details and venue_bind_id and details == "locate_user":
+
+    if details == "locate_user" and venue_bind_id:
         event_details = get_event_details(venue_bind_id)
+        special_event_id = event_details.event_bind_id
 
         venue_bind_id = event_details.venue_id
         venue_details = get_venue_details(venue_bind_id)
@@ -220,6 +224,7 @@ def locate_venue(userRole, details=None, venue_bind_id=None):
             venue_details=venue_details,
             venue_bind_id=venue_bind_id,
             event_details=event_details,
+            special_event_id=special_event_id,
             userRole=userRole,
             user_info=user_info)
 
@@ -509,6 +514,10 @@ def recognize_face(userRole, event_bind_id=None):
                 # Mark the user attendance
                 student_blind_id = user_data.student_bind_id
                 print("student_blind_id", student_blind_id)
+
+                if not event_bind_id:
+                    event_bind_id = face_scan_key
+
                 print("event_bind_id", event_bind_id)
 
                 mark_attendence = get_student_records(student_blind_id, event_bind_id, "attendance")

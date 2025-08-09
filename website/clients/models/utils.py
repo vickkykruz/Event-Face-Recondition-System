@@ -5,6 +5,7 @@ from os import path, environ, getenv
 import requests
 from website.clients.models.models import Students, StudentInfo
 from website.admin.models.models import Events, Venues, Attendance
+from website.admin.models.utils import get_venue_details
 from flask import request, redirect, flash, url_for, make_response, current_app, session, make_response
 from firebase_admin import auth as firebase_auth, storage, firestore, credentials
 import base64
@@ -1042,6 +1043,8 @@ def send_email_reminder(event, students, subject):
 
     link = url_for('views.clientDashboard', userRole="students", _external=True)
     action = "View event details"
+    venue_info = None
+    venue_name = None
 
     for student in students:
         if not isinstance(student, Students):  # Ensure every item is a `Students` object
@@ -1051,10 +1054,16 @@ def send_email_reminder(event, students, subject):
         name = student.name
         email = student.email
 
+        if event.venue_id:
+            venue_info = get_venue_details(event.venue_id)
+            
+            if venue_info:
+                venue_name = venue_info.venue_name
+
         message = (
             f"Hello {name},\n\n"
             f"This is a reminder for the event '{event.event_title}'.\n\n"
-            f"📍 Venue: {event.venue_id}\n"
+            f"📍 Venue: {venue_name}\n"
             f"📅 Date: {event.event_date}\n"
             f"⏰ Time: {event.event_time}\n\n"
             "Please make sure to attend.\n\nBest Regards,\nEvent Management Team"
